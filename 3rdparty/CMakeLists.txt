@@ -1,0 +1,5 @@
+add_subdirectory(format)
+add_subdirectory(glm)
+add_subdirectory(json)
+add_subdirectory(sdl)
+add_subdirectory(stb_image)
