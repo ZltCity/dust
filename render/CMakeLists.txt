@@ -1,11 +1,18 @@
 add_library(render STATIC
+	src/vulkan/vulkan_renderer.cpp
 	src/backend.cpp
-	src/render.cpp)
+	src/renderer.cpp)
 
 add_library(dust::render ALIAS render)
 
 set_target_properties(render PROPERTIES
 	CXX_STANDARD 20)
+
+if (${WITH_SDL})
+	target_compile_definitions(render PUBLIC WITH_SDL)
+	target_link_libraries(render PUBLIC
+		SDL2::SDL2)
+endif ()
 
 target_include_directories(render PUBLIC
 	${CMAKE_CURRENT_SOURCE_DIR}/include)

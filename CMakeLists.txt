@@ -4,6 +4,8 @@ project(Dust)
 
 include(FetchContent)
 
+option(WITH_SDL "Build with SDL2 support" ON)
+
 if (MSVC)
 	add_compile_options(/W4)
 else ()
