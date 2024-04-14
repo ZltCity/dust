@@ -1,4 +1,4 @@
-find_package(Vulkan REQUIRED FATAL_ERROR)
+find_package(Vulkan REQUIRED)
 
 add_library(render STATIC
 	src/vulkan/vulkan_renderer.cpp
@@ -15,6 +15,9 @@ if (${WITH_SDL})
 	target_link_libraries(render PUBLIC
 		SDL2::SDL2)
 endif ()
+
+target_link_libraries(render PRIVATE
+	fmt::fmt)
 
 target_link_libraries(render PUBLIC
 	dust::glue

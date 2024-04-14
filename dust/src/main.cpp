@@ -9,7 +9,8 @@ int main(int argc, char **argv)
 
 	auto window = std::unique_ptr<SDL_Window, decltype(&SDL_DestroyWindow)> {
 		SDL_CreateWindow("Test", 50, 50, 1280, 720, SDL_WINDOW_VULKAN), SDL_DestroyWindow};
-	auto renderer = dust::render::createRenderer(window.get());
+	const auto appInfo = dust::glue::ApplicationInfo {.applicationName = "Dust", .applicationVersion = 0};
+	auto renderer = dust::render::createRenderer(appInfo, window.get());
 	auto quit = false;
 
 	while (not quit)

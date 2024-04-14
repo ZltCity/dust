@@ -28,9 +28,10 @@ public:
 
 [[nodiscard]] std::unique_ptr<Renderer> createRenderer(
 	const glue::ApplicationInfo &applicationInfo, Backend backend = Backend::Vulkan);
+
 #if defined(WITH_SDL)
 [[nodiscard]] std::unique_ptr<Renderer> createRenderer(
-	SDL_Window *window, const glue::ApplicationInfo &applicationInfo, Backend backend = Backend::Vulkan);
+	const glue::ApplicationInfo &applicationInfo, SDL_Window *window, Backend backend = Backend::Vulkan);
 #endif
 
 } // namespace dust::render

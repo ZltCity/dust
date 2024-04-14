@@ -12,6 +12,10 @@ else ()
 	add_compile_options(-Wall -Wextra -Wpedantic)
 endif ()
 
+add_compile_definitions(
+	DUST_ENGINE_NAME="Dust"
+	DUST_ENGINE_VERSION=0)
+
 add_subdirectory(3rdparty)
 add_subdirectory(dust)
 add_subdirectory(glue)
