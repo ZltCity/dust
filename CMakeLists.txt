@@ -14,4 +14,5 @@ endif ()
 
 add_subdirectory(3rdparty)
 add_subdirectory(dust)
+add_subdirectory(glue)
 add_subdirectory(render)

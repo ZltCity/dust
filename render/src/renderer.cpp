@@ -6,15 +6,15 @@ namespace dust::render
 {
 
 Renderer::~Renderer() noexcept
-{
-}
+{}
 
 #if defined(WITH_SDL)
-std::unique_ptr<Renderer> createRenderer(SDL_Window *window, Backend backend)
+std::unique_ptr<Renderer> createRenderer(
+	SDL_Window *window, const glue::ApplicationInfo &applicationInfo, Backend backend)
 {
 	switch (backend)
 	{
-		case Backend::Vulkan: return std::make_unique<VulkanRenderer>();
+		case Backend::Vulkan: return std::make_unique<VulkanRenderer>(applicationInfo);
 		default: return {};
 	}
 }

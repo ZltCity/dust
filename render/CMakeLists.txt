@@ -1,3 +1,5 @@
+find_package(Vulkan REQUIRED FATAL_ERROR)
+
 add_library(render STATIC
 	src/vulkan/vulkan_renderer.cpp
 	src/backend.cpp
@@ -13,6 +15,10 @@ if (${WITH_SDL})
 	target_link_libraries(render PUBLIC
 		SDL2::SDL2)
 endif ()
+
+target_link_libraries(render PUBLIC
+	dust::glue
+	Vulkan::Vulkan)
 
 target_include_directories(render PUBLIC
 	${CMAKE_CURRENT_SOURCE_DIR}/include)
