@@ -4,13 +4,15 @@
 #include <dust/render/renderer.hpp>
 
 int main(int argc, char **argv)
+try
 {
 	SDL_Init(SDL_INIT_EVERYTHING);
 
 	auto window = std::unique_ptr<SDL_Window, decltype(&SDL_DestroyWindow)> {
 		SDL_CreateWindow("Test", 50, 50, 1280, 720, SDL_WINDOW_VULKAN), SDL_DestroyWindow};
 	const auto appInfo = dust::glue::ApplicationInfo {.applicationName = "Dust", .applicationVersion = 0};
-	auto renderer = dust::render::createRenderer(appInfo, window.get());
+	auto renderer = dust::render::createRenderer(
+		appInfo, window.get(), dust::render::Backend::Vulkan, {{dust::render::HintName::UseDevice, 0}});
 	auto quit = false;
 
 	while (not quit)
@@ -31,4 +33,9 @@ int main(int argc, char **argv)
 	}
 
 	return 0;
+}
+catch (const std::exception &ex)
+{
+	std::cout << ex.what() << std::endl;
+	std::exit(-1);
 }

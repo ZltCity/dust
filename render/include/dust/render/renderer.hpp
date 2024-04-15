@@ -1,6 +1,8 @@
 #pragma once
 
+#include <initializer_list>
 #include <memory>
+#include <utility>
 
 #if defined(WITH_SDL)
 #include <SDL.h>
@@ -9,6 +11,7 @@
 #include <dust/glue/application_info.hpp>
 
 #include "backend.hpp"
+#include "hint.hpp"
 
 namespace dust::render
 {
@@ -27,11 +30,13 @@ public:
 };
 
 [[nodiscard]] std::unique_ptr<Renderer> createRenderer(
-	const glue::ApplicationInfo &applicationInfo, Backend backend = Backend::Vulkan);
+	const glue::ApplicationInfo &applicationInfo, Backend backend = Backend::Vulkan,
+	std::initializer_list<Hint> hints = {});
 
 #if defined(WITH_SDL)
 [[nodiscard]] std::unique_ptr<Renderer> createRenderer(
-	const glue::ApplicationInfo &applicationInfo, SDL_Window *window, Backend backend = Backend::Vulkan);
+	const glue::ApplicationInfo &applicationInfo, SDL_Window *window, Backend backend = Backend::Vulkan,
+	std::initializer_list<Hint> hints = {});
 #endif
 
 } // namespace dust::render
