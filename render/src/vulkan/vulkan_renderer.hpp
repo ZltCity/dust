@@ -15,8 +15,11 @@ public:
 private:
 	[[nodiscard]] static vk::raii::Device createVulkanDevice(
 		const vk::raii::PhysicalDevice &physicalDevice, uint32_t queueFamily);
+	[[nodiscard]] static vk::raii::CommandPool createVulkanCommandPool(
+		const vk::raii::Device &device, uint32_t queueFamily);
 
 	vk::raii::Device m_device;
+	vk::raii::CommandPool m_commandPool;
 };
 
 } // namespace dust::render::vulkan
