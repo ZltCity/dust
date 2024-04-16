@@ -23,14 +23,21 @@ public:
 	[[nodiscard]] std::vector<Device> getSuitableDevices() const final;
 
 private:
+	struct SuitableQueueFamily
+	{
+		uint32_t queueFamily, queueCount;
+	};
+
 	struct SuitablePhysicalDevice
 	{
 		vk::raii::PhysicalDevice physicalDevice;
-		uint32_t physicalDeviceIndex, deviceQueueFamily;
+		uint32_t physicalDeviceIndex;
+		SuitableQueueFamily queueFamily;
 	};
 
 	[[nodiscard]] std::vector<SuitablePhysicalDevice> getSuitablePhysicalDevices() const;
-	[[nodiscard]] std::optional<uint32_t> getSuitableQueueFamily(const vk::raii::PhysicalDevice &physicalDevice) const;
+	[[nodiscard]] std::optional<SuitableQueueFamily> getSuitableQueueFamily(
+		const vk::raii::PhysicalDevice &physicalDevice) const;
 
 	[[nodiscard]] static vk::raii::Instance createVulkanInstance(
 		const vk::raii::Context &context, const glue::ApplicationInfo &applicationInfo);

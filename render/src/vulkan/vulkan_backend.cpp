@@ -36,7 +36,12 @@ std::unique_ptr<Renderer> VulkanBackend::createRenderer(std::initializer_list<Hi
 
 	const auto physicalDevice = choosePhysicalDevice(suitablePhysicalDevices, hints);
 
-	return std::make_unique<VulkanRenderer>(physicalDevice.physicalDevice, physicalDevice.deviceQueueFamily);
+	return m_surface.has_value() ? std::make_unique<VulkanRenderer>(
+									   *m_surface, physicalDevice.physicalDevice,
+									   physicalDevice.queueFamily.queueFamily, physicalDevice.queueFamily.queueCount)
+								 : std::make_unique<VulkanRenderer>(
+									   physicalDevice.physicalDevice, physicalDevice.queueFamily.queueFamily,
+									   physicalDevice.queueFamily.queueCount);
 }
 
 std::vector<Device> VulkanBackend::getSuitableDevices() const
@@ -58,7 +63,7 @@ std::vector<Device> VulkanBackend::getSuitableDevices() const
 auto VulkanBackend::getSuitablePhysicalDevices() const -> std::vector<SuitablePhysicalDevice>
 {
 	auto suitablePhysicalDevices = std::vector<SuitablePhysicalDevice> {};
-	auto deviceIndex = uint32_t {};
+	auto physicalDeviceIndex = uint32_t {};
 
 	for (const auto &physicalDevice : m_instance.enumeratePhysicalDevices())
 	{
@@ -69,16 +74,20 @@ auto VulkanBackend::getSuitablePhysicalDevices() const -> std::vector<SuitablePh
 			 deviceProperties.deviceType == vk::PhysicalDeviceType::eIntegratedGpu) and
 			queueFamily.has_value())
 		{
-			suitablePhysicalDevices.emplace_back(physicalDevice, deviceIndex, queueFamily.value());
+			suitablePhysicalDevices.push_back(SuitablePhysicalDevice {
+				.physicalDevice = physicalDevice,
+				.physicalDeviceIndex = physicalDeviceIndex,
+				.queueFamily = *queueFamily});
 		}
 
-		++deviceIndex;
+		++physicalDeviceIndex;
 	}
 
 	return suitablePhysicalDevices;
 }
 
-std::optional<uint32_t> VulkanBackend::getSuitableQueueFamily(const vk::raii::PhysicalDevice &physicalDevice) const
+auto VulkanBackend::getSuitableQueueFamily(const vk::raii::PhysicalDevice &physicalDevice) const
+	-> std::optional<SuitableQueueFamily>
 {
 	auto queueFamilyIndex = uint32_t {};
 
@@ -87,9 +96,11 @@ std::optional<uint32_t> VulkanBackend::getSuitableQueueFamily(const vk::raii::Ph
 		if ((queueFamilyProperties.queueFlags & vk::QueueFlagBits::eGraphics) and
 			(queueFamilyProperties.queueFlags & vk::QueueFlagBits::eTransfer) and
 			(queueFamilyProperties.queueFlags & vk::QueueFlagBits::eCompute) and
-			(not m_surface.has_value() or physicalDevice.getSurfaceSupportKHR(queueFamilyIndex, m_surface.value())))
+			(not m_surface.has_value() or physicalDevice.getSurfaceSupportKHR(queueFamilyIndex, *(*m_surface))) and
+			queueFamilyProperties.queueCount >= 1)
 		{
-			return {queueFamilyIndex};
+			return {
+				SuitableQueueFamily {.queueFamily = queueFamilyIndex, .queueCount = queueFamilyProperties.queueCount}};
 		}
 
 		++queueFamilyIndex;
