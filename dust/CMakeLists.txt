@@ -6,4 +6,5 @@ set_target_properties(dust PROPERTIES
 
 target_link_libraries(dust PRIVATE
 	dust::render
+	fmt::fmt
 	SDL2::SDL2)

@@ -1,6 +1,8 @@
 #pragma once
 
+#include <string>
 #include <utility>
+#include <variant>
 
 namespace dust::render
 {
@@ -10,6 +12,10 @@ enum class HintName
 	UseDevice = 0
 };
 
-using Hint = std::pair<HintName, int32_t>;
+struct Hint
+{
+	HintName name;
+	std::variant<bool, int32_t, float, std::string> value;
+};
 
 } // namespace dust::render
