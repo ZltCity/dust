@@ -9,6 +9,7 @@
 #include "vulkan_backend.hpp"
 #include "vulkan_error.hpp"
 #include "vulkan_renderer.hpp"
+#include "vulkan_util.hpp"
 
 namespace dust::render::vulkan
 {
@@ -132,10 +133,28 @@ vk::raii::Instance VulkanBackend::createVulkanInstance(
 		"VK_LAYER_KHRONOS_validation",
 #endif
 	};
+
+	if (const auto missing = getMissing(
+			context.enumerateInstanceLayerProperties(), layers,
+			[](const vk::LayerProperties &prop, const char *name) {
+				return static_cast<std::string_view>(prop.layerName) == std::string_view {name};
+			});
+		missing.has_value())
+	{
+		throw std::runtime_error {fmt::format("Required instance layer '{}' is not available.", *missing)};
+	}
+
 	const auto extensions = getRequiredVulkanExtensions(window);
 
-	checkLayersAvailability(context.enumerateInstanceLayerProperties(), layers);
-	checkExtensionsAvailability(context.enumerateInstanceExtensionProperties(), extensions);
+	if (const auto missing = getMissing(
+			context.enumerateInstanceExtensionProperties(), extensions,
+			[](const vk::ExtensionProperties &prop, const char *name) {
+				return static_cast<std::string_view>(prop.extensionName) == std::string_view {name};
+			});
+		missing.has_value())
+	{
+		throw std::runtime_error {fmt::format("Required instance extension '{}' is not available.", *missing)};
+	}
 
 	return vk::raii::Instance {context, vk::InstanceCreateInfo {{}, &vulkanApplicationInfo, layers, extensions}};
 }
@@ -171,37 +190,6 @@ std::vector<const char *> VulkanBackend::getRequiredVulkanExtensions(SDL_Window 
 	return extensions;
 }
 #endif
-
-void VulkanBackend::checkLayersAvailability(
-	const std::vector<vk::LayerProperties> &availableLayers, const std::vector<const char *> &requiredLayers)
-{
-	for (auto layerName : requiredLayers)
-	{
-		if (std::find_if(availableLayers.begin(), availableLayers.end(), [layerName](const vk::LayerProperties &prop) {
-				return static_cast<std::string_view>(prop.layerName) == std::string_view {layerName};
-			}) == availableLayers.end())
-		{
-			throw std::runtime_error {fmt::format("Layer '{}' is unavailable.", layerName)};
-		}
-	}
-}
-
-void VulkanBackend::checkExtensionsAvailability(
-	const std::vector<vk::ExtensionProperties> &availableExtensions,
-	const std::vector<const char *> &requiredExtensions)
-{
-	for (auto extensionName : requiredExtensions)
-	{
-		if (std::find_if(
-				availableExtensions.begin(), availableExtensions.end(),
-				[extensionName](const vk::ExtensionProperties &prop) {
-					return static_cast<std::string_view>(prop.extensionName) == std::string_view {extensionName};
-				}) == availableExtensions.end())
-		{
-			throw std::runtime_error {fmt::format("Extension '{}' is unavailable.", extensionName)};
-		}
-	}
-}
 
 auto VulkanBackend::choosePhysicalDevice(
 	const std::vector<SuitablePhysicalDevice> &suitablePhysicalDevices, std::initializer_list<Hint> hints)

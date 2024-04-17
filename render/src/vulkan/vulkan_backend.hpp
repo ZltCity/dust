@@ -51,11 +51,6 @@ private:
 	[[nodiscard]] static std::vector<const char *> getRequiredVulkanExtensions(SDL_Window *window);
 #endif
 
-	static void checkLayersAvailability(
-		const std::vector<vk::LayerProperties> &availableLayers, const std::vector<const char *> &requiredLayers);
-	static void checkExtensionsAvailability(
-		const std::vector<vk::ExtensionProperties> &availableExtensions,
-		const std::vector<const char *> &requiredExtensions);
 	[[nodiscard]] static SuitablePhysicalDevice choosePhysicalDevice(
 		const std::vector<SuitablePhysicalDevice> &suitablePhysicalDevices, std::initializer_list<Hint> hints);
 
