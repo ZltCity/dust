@@ -1,27 +1,38 @@
 #pragma once
 
 #include <algorithm>
-#include <optional>
+#include <set>
+#include <vector>
 
 namespace dust::render::vulkan
 {
 
-template<class AvailableT, class RequiredT, class CompT>
-std::optional<RequiredT> getMissing(
-	const std::vector<AvailableT> &available, const std::vector<RequiredT> &required,
-	CompT compare = std::equal_to<AvailableT>())
+template<class CollectionT, class KeyT>
+auto makeSet(
+	const CollectionT &collection, KeyT key = [](auto &&value) { return value; })
 {
-	for (const auto &reqValue : required)
+	auto _set = std::set<std::invoke_result_t<KeyT, typename CollectionT::value_type>> {};
+
+	std::transform(collection.begin(), collection.end(), std::inserter(_set, _set.end()), key);
+
+	return _set;
+}
+
+template<class AvailableT, class RequiredT, class KeyT>
+auto getMissing(const AvailableT &available, const RequiredT &required, KeyT key)
+{
+	const auto availableSet = makeSet(available, key);
+	auto missing = std::vector<typename RequiredT::value_type> {};
+
+	for (const auto &value : required)
 	{
-		if (std::find_if(available.begin(), available.end(), [&reqValue, &compare](auto &&availValue) {
-				return compare(availValue, reqValue);
-			}) == available.end())
+		if (not availableSet.contains(value))
 		{
-			return {reqValue};
+			missing.push_back(value);
 		}
 	}
 
-	return {};
+	return missing;
 }
 
 } // namespace dust::render::vulkan

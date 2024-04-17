@@ -136,24 +136,22 @@ vk::raii::Instance VulkanBackend::createVulkanInstance(
 
 	if (const auto missing = getMissing(
 			context.enumerateInstanceLayerProperties(), layers,
-			[](const vk::LayerProperties &prop, const char *name) {
-				return static_cast<std::string_view>(prop.layerName) == std::string_view {name};
-			});
-		missing.has_value())
+			[](const vk::LayerProperties &prop) { return static_cast<std::string_view>(prop.layerName); });
+		not missing.empty())
 	{
-		throw std::runtime_error {fmt::format("Required instance layer '{}' is not available.", *missing)};
+		throw std::runtime_error {
+			fmt::format("Following instance layers are not available: {}.", fmt::join(missing, ", "))};
 	}
 
 	const auto extensions = getRequiredVulkanExtensions(window);
 
 	if (const auto missing = getMissing(
 			context.enumerateInstanceExtensionProperties(), extensions,
-			[](const vk::ExtensionProperties &prop, const char *name) {
-				return static_cast<std::string_view>(prop.extensionName) == std::string_view {name};
-			});
-		missing.has_value())
+			[](const vk::ExtensionProperties &prop) { return static_cast<std::string_view>(prop.extensionName); });
+		not missing.empty())
 	{
-		throw std::runtime_error {fmt::format("Required instance extension '{}' is not available.", *missing)};
+		throw std::runtime_error {
+			fmt::format("Following instance extensions are not available: {}.", fmt::join(missing, ", "))};
 	}
 
 	return vk::raii::Instance {context, vk::InstanceCreateInfo {{}, &vulkanApplicationInfo, layers, extensions}};

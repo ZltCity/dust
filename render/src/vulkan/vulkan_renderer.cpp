@@ -38,7 +38,8 @@ vk::raii::SwapchainKHR VulkanRenderer::createVulkanSwapchain(
 	const vk::raii::SurfaceKHR &surface, const vk::raii::PhysicalDevice &physicalDevice, const vk::raii::Device &device,
 	uint32_t queueFamily)
 {
-	const auto surfaceFormat = chooseSurfaceFormat(surface, physicalDevice, {vk::Format::eR8G8B8A8Unorm});
+	const auto surfaceFormat =
+		chooseSurfaceFormat(surface, physicalDevice, {vk::Format::eR8G8B8A8Unorm, vk::Format::eB8G8R8A8Unorm});
 	const auto surfaceCapabilities = physicalDevice.getSurfaceCapabilitiesKHR(*surface);
 	const auto queueFamilyIndices = std::array {queueFamily};
 	auto swapchain = vk::raii::SwapchainKHR {
