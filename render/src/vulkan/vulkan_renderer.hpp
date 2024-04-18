@@ -1,6 +1,5 @@
 #pragma once
 
-#include <initializer_list>
 #include <optional>
 
 #include <vulkan/vulkan_raii.hpp>
@@ -18,23 +17,19 @@ public:
 		const vk::raii::SurfaceKHR &surface, const vk::raii::PhysicalDevice &physicalDevice, uint32_t queueFamily,
 		uint32_t queueCount);
 
+	void startFrame() final;
+	void endFrame() final;
+
 private:
-	[[nodiscard]] static vk::raii::Device createVulkanDevice(
-		const vk::raii::PhysicalDevice &physicalDevice, uint32_t queueFamily, uint32_t queueCount,
-		std::initializer_list<const char *> extensions = {});
-	[[nodiscard]] static vk::raii::CommandPool createVulkanCommandPool(
-		const vk::raii::Device &device, uint32_t queueFamily);
-	[[nodiscard]] static vk::raii::SwapchainKHR createVulkanSwapchain(
-		const vk::raii::SurfaceKHR &surface, const vk::raii::PhysicalDevice &physicalDevice,
-		const vk::raii::Device &device, uint32_t queueFamily);
-
-	[[nodiscard]] static vk::SurfaceFormatKHR chooseSurfaceFormat(
-		const vk::raii::SurfaceKHR &surface, const vk::raii::PhysicalDevice &physicalDevice,
-		std::initializer_list<vk::Format> requiredFormats);
-
 	vk::raii::Device m_device;
 	vk::raii::CommandPool m_commandPool;
+	//	vk::raii::CommandBuffer m_commandBuffer;
+	std::optional<vk::SurfaceFormatKHR> m_surfaceFormat;
+	std::optional<vk::SurfaceCapabilitiesKHR> m_surfaceCapabilities;
 	std::optional<vk::raii::SwapchainKHR> m_swapchain;
+	vk::raii::RenderPass m_renderPass;
+	std::vector<vk::raii::ImageView> m_imageViews;
+	std::vector<vk::raii::Framebuffer> m_frameBuffers;
 };
 
 } // namespace dust::render::vulkan

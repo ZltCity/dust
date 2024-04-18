@@ -14,6 +14,17 @@
 namespace dust::render::vulkan
 {
 
+[[nodiscard]] vk::raii::Instance createVulkanInstance(
+	const vk::raii::Context &context, const glue::ApplicationInfo &applicationInfo);
+
+#if defined(WITH_SDL)
+[[nodiscard]] vk::raii::Instance createVulkanInstance(
+	const vk::raii::Context &context, const glue::ApplicationInfo &applicationInfo, SDL_Window *window);
+[[nodiscard]] vk::raii::SurfaceKHR createVulkanSurface(const vk::raii::Instance &instance, SDL_Window *window);
+
+[[nodiscard]] std::vector<const char *> getRequiredVulkanExtensions(SDL_Window *window);
+#endif
+
 VulkanBackend::VulkanBackend(const glue::ApplicationInfo &applicationInfo)
 	: m_context {}, m_instance {createVulkanInstance(m_context, applicationInfo)}
 {}
@@ -110,14 +121,13 @@ auto VulkanBackend::getSuitableQueueFamily(const vk::raii::PhysicalDevice &physi
 	return {};
 }
 
-vk::raii::Instance VulkanBackend::createVulkanInstance(
-	const vk::raii::Context &context, const glue::ApplicationInfo &applicationInfo)
+vk::raii::Instance createVulkanInstance(const vk::raii::Context &context, const glue::ApplicationInfo &applicationInfo)
 {
 	throw HeadlessNotImplemented {};
 }
 
 #if defined(WITH_SDL)
-vk::raii::Instance VulkanBackend::createVulkanInstance(
+vk::raii::Instance createVulkanInstance(
 	const vk::raii::Context &context, const glue::ApplicationInfo &applicationInfo, SDL_Window *window)
 {
 	const auto vulkanApplicationInfo = vk::ApplicationInfo {
@@ -153,7 +163,7 @@ vk::raii::Instance VulkanBackend::createVulkanInstance(
 	return vk::raii::Instance {context, vk::InstanceCreateInfo {{}, &vulkanApplicationInfo, layers, extensions}};
 }
 
-vk::raii::SurfaceKHR VulkanBackend::createVulkanSurface(const vk::raii::Instance &instance, SDL_Window *window)
+vk::raii::SurfaceKHR createVulkanSurface(const vk::raii::Instance &instance, SDL_Window *window)
 {
 	auto surface = VkSurfaceKHR {};
 
@@ -165,7 +175,7 @@ vk::raii::SurfaceKHR VulkanBackend::createVulkanSurface(const vk::raii::Instance
 	return vk::raii::SurfaceKHR {instance, surface};
 }
 
-std::vector<const char *> VulkanBackend::getRequiredVulkanExtensions(SDL_Window *window)
+std::vector<const char *> getRequiredVulkanExtensions(SDL_Window *window)
 {
 	unsigned int count = 0;
 
@@ -186,7 +196,7 @@ std::vector<const char *> VulkanBackend::getRequiredVulkanExtensions(SDL_Window 
 #endif
 
 auto VulkanBackend::choosePhysicalDevice(
-	const std::vector<SuitablePhysicalDevice> &suitablePhysicalDevices, std::initializer_list<Hint> hints)
+	const std::vector<SuitablePhysicalDevice> &suitablePhysicalDevices, const std::vector<Hint> &hints)
 	-> SuitablePhysicalDevice
 {
 	const auto useDeviceHint =

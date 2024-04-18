@@ -14,6 +14,9 @@ public:
 
 	Renderer &operator=(const Renderer &) = delete;
 	Renderer &operator=(Renderer &&) noexcept = delete;
+
+	virtual void startFrame() = 0;
+	virtual void endFrame() = 0;
 };
 
 } // namespace dust::render

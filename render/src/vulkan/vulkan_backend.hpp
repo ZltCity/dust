@@ -39,20 +39,8 @@ private:
 	[[nodiscard]] std::optional<SuitableQueueFamily> getSuitableQueueFamily(
 		const vk::raii::PhysicalDevice &physicalDevice) const;
 
-	[[nodiscard]] static vk::raii::Instance createVulkanInstance(
-		const vk::raii::Context &context, const glue::ApplicationInfo &applicationInfo);
-
-#if defined(WITH_SDL)
-	[[nodiscard]] static vk::raii::Instance createVulkanInstance(
-		const vk::raii::Context &context, const glue::ApplicationInfo &applicationInfo, SDL_Window *window);
-	[[nodiscard]] static vk::raii::SurfaceKHR createVulkanSurface(
-		const vk::raii::Instance &instance, SDL_Window *window);
-
-	[[nodiscard]] static std::vector<const char *> getRequiredVulkanExtensions(SDL_Window *window);
-#endif
-
 	[[nodiscard]] static SuitablePhysicalDevice choosePhysicalDevice(
-		const std::vector<SuitablePhysicalDevice> &suitablePhysicalDevices, std::initializer_list<Hint> hints);
+		const std::vector<SuitablePhysicalDevice> &suitablePhysicalDevices, const std::vector<Hint> &hints);
 
 	vk::raii::Context m_context;
 	vk::raii::Instance m_instance;
