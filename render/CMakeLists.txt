@@ -3,6 +3,7 @@ find_package(Vulkan REQUIRED)
 add_library(render STATIC
 	src/vulkan/vulkan_backend.cpp
 	src/vulkan/vulkan_renderer.cpp
+	src/vulkan/vulkan_util.cpp
 	src/backend.cpp
 	src/renderer.cpp)
 

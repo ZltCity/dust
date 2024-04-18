@@ -1,6 +1,9 @@
 #include <algorithm>
 
+#include <fmt/format.h>
+
 #include "vulkan_renderer.hpp"
+#include "vulkan_util.hpp"
 
 namespace dust::render::vulkan
 {
@@ -23,6 +26,14 @@ vk::raii::Device VulkanRenderer::createVulkanDevice(
 	const vk::raii::PhysicalDevice &physicalDevice, uint32_t queueFamily, uint32_t queueCount,
 	std::initializer_list<const char *> extensions)
 {
+	if (const auto missing =
+			checkExtensionsAvailability(physicalDevice.enumerateDeviceExtensionProperties(), extensions);
+		not missing.empty())
+	{
+		throw std::runtime_error {
+			fmt::format("Following device extensions are not available: {}.", fmt::join(missing, ", "))};
+	}
+
 	const auto queuePriorities = std::vector<float>(queueCount, 1.f);
 	const auto deviceQueueCreateInfo = std::array {vk::DeviceQueueCreateInfo {{}, queueFamily, queuePriorities}};
 

@@ -134,9 +134,7 @@ vk::raii::Instance VulkanBackend::createVulkanInstance(
 #endif
 	};
 
-	if (const auto missing = getMissing(
-			context.enumerateInstanceLayerProperties(), layers,
-			[](const vk::LayerProperties &prop) { return static_cast<std::string_view>(prop.layerName); });
+	if (const auto missing = checkLayersAvailability(context.enumerateInstanceLayerProperties(), layers);
 		not missing.empty())
 	{
 		throw std::runtime_error {
@@ -145,9 +143,7 @@ vk::raii::Instance VulkanBackend::createVulkanInstance(
 
 	const auto extensions = getRequiredVulkanExtensions(window);
 
-	if (const auto missing = getMissing(
-			context.enumerateInstanceExtensionProperties(), extensions,
-			[](const vk::ExtensionProperties &prop) { return static_cast<std::string_view>(prop.extensionName); });
+	if (const auto missing = checkExtensionsAvailability(context.enumerateInstanceExtensionProperties(), extensions);
 		not missing.empty())
 	{
 		throw std::runtime_error {
