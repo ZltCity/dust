@@ -12,6 +12,8 @@ namespace dust::render::vulkan
 	const vk::raii::PhysicalDevice &physicalDevice, uint32_t queueFamily, uint32_t queueCount,
 	std::initializer_list<const char *> extensions = {});
 [[nodiscard]] vk::raii::CommandPool createVulkanCommandPool(const vk::raii::Device &device, uint32_t queueFamily);
+[[nodiscard]] std::vector<vk::raii::CommandBuffer> createVulkanCommandBuffers(
+	const vk::raii::Device &device, const vk::raii::CommandPool &commandPool);
 [[nodiscard]] vk::raii::SwapchainKHR createVulkanSwapchain(
 	const vk::raii::Device &device, const vk::raii::SurfaceKHR &surface, const vk::SurfaceFormatKHR &surfaceFormat,
 	const vk::SurfaceCapabilitiesKHR &surfaceCapabilities, uint32_t queueFamily);
@@ -29,7 +31,10 @@ VulkanRenderer::VulkanRenderer(
 	const vk::raii::PhysicalDevice &physicalDevice, uint32_t queueFamily, uint32_t queueCount)
 	: m_device {createVulkanDevice(physicalDevice, queueFamily, queueCount)},
 	  m_commandPool {createVulkanCommandPool(m_device, queueFamily)},
-	  m_renderPass {createVulkanRenderPass(m_device, vk::Format::eUndefined)}
+	  m_renderPass {createVulkanRenderPass(m_device, vk::Format::eUndefined)},
+	  m_imageAvailableSemaphore {m_device, vk::SemaphoreCreateInfo {}},
+	  m_renderFence {m_device, vk::FenceCreateInfo {}},
+	  m_renderQueue {m_device, queueFamily, 0}
 {}
 
 VulkanRenderer::VulkanRenderer(
@@ -37,6 +42,7 @@ VulkanRenderer::VulkanRenderer(
 	uint32_t queueCount)
 	: m_device {createVulkanDevice(physicalDevice, queueFamily, queueCount, {"VK_KHR_swapchain"})},
 	  m_commandPool {createVulkanCommandPool(m_device, queueFamily)},
+	  m_commandBuffers {createVulkanCommandBuffers(m_device, m_commandPool)},
 	  m_surfaceFormat {chooseSurfaceFormat(
 		  physicalDevice.getSurfaceFormatsKHR(*surface), {vk::Format::eR8G8B8A8Unorm, vk::Format::eB8G8R8A8Unorm})},
 	  m_surfaceCapabilities {physicalDevice.getSurfaceCapabilitiesKHR(*surface)},
@@ -44,14 +50,60 @@ VulkanRenderer::VulkanRenderer(
 	  m_renderPass {createVulkanRenderPass(m_device, m_surfaceFormat->format)},
 	  m_imageViews {createVulkanImageViews(m_device, *m_surfaceFormat, *m_swapchain)},
 	  m_frameBuffers {
-		  createVulkanFrameBuffers(m_device, m_surfaceCapabilities->currentExtent, m_renderPass, m_imageViews)}
+		  createVulkanFrameBuffers(m_device, m_surfaceCapabilities->currentExtent, m_renderPass, m_imageViews)},
+	  m_imageAvailableSemaphore {m_device, vk::SemaphoreCreateInfo {}},
+	  m_renderFence {m_device, vk::FenceCreateInfo {}},
+	  m_renderQueue {m_device, queueFamily, 0}
 {}
 
 void VulkanRenderer::startFrame()
-{}
+{
+	const auto image = m_swapchain->acquireNextImage(UINT64_MAX, *m_imageAvailableSemaphore, {});
+
+	if (image.first != vk::Result::eSuccess)
+	{
+		return;
+	}
+
+	m_frameImageIndex = image.second;
+
+	auto &cmd = m_commandBuffers.front();
+
+	cmd.reset({});
+	cmd.begin(vk::CommandBufferBeginInfo {});
+	cmd.beginRenderPass(
+		vk::RenderPassBeginInfo {
+			*m_renderPass, *m_frameBuffers[m_frameImageIndex], vk::Rect2D {{}, m_surfaceCapabilities->currentExtent}},
+		vk::SubpassContents::eInline);
+}
 
 void VulkanRenderer::endFrame()
-{}
+{
+	auto &cmd = m_commandBuffers.front();
+
+	cmd.endRenderPass();
+	cmd.end();
+
+	m_device.resetFences({*m_renderFence});
+
+	const auto waitSemaphores = std::array {*m_imageAvailableSemaphore};
+	const auto pipelineStageFlags =
+		std::array<vk::PipelineStageFlags, 1> {vk::PipelineStageFlagBits::eColorAttachmentOutput};
+	const auto commandBuffers = std::array {*cmd};
+	const auto submitInfo = std::array {vk::SubmitInfo {waitSemaphores, pipelineStageFlags, commandBuffers}};
+
+	m_renderQueue.submit(submitInfo, *m_renderFence);
+
+	while (m_device.waitForFences({*m_renderFence}, true, 0) == vk::Result::eTimeout)
+		;
+
+	const auto swapchains = std::array {*(m_swapchain.value())};
+	const auto images = std::array {m_frameImageIndex};
+
+	m_renderQueue.presentKHR(vk::PresentInfoKHR {{}, swapchains, images});
+
+	m_device.waitIdle();
+}
 
 vk::raii::Device createVulkanDevice(
 	const vk::raii::PhysicalDevice &physicalDevice, uint32_t queueFamily, uint32_t queueCount,
@@ -73,7 +125,15 @@ vk::raii::Device createVulkanDevice(
 
 vk::raii::CommandPool createVulkanCommandPool(const vk::raii::Device &device, uint32_t queueFamily)
 {
-	return vk::raii::CommandPool {device, vk::CommandPoolCreateInfo {{}, queueFamily}};
+	return vk::raii::CommandPool {
+		device, vk::CommandPoolCreateInfo {vk::CommandPoolCreateFlagBits::eResetCommandBuffer, queueFamily}};
+}
+
+std::vector<vk::raii::CommandBuffer> createVulkanCommandBuffers(
+	const vk::raii::Device &device, const vk::raii::CommandPool &commandPool)
+{
+	return device.allocateCommandBuffers(
+		vk::CommandBufferAllocateInfo {*commandPool, vk::CommandBufferLevel::ePrimary, 1});
 }
 
 vk::raii::SwapchainKHR createVulkanSwapchain(
@@ -114,13 +174,13 @@ vk::raii::RenderPass createVulkanRenderPass(const vk::raii::Device &device, vk::
 		vk::ImageLayout::eUndefined,
 		vk::ImageLayout::ePresentSrcKHR,
 	}};
-	const auto subpasses = std::array {
-		vk::SubpassDescription {
-			{},
-			vk::PipelineBindPoint::eGraphics,
-
-		}
-	};
+	const auto attachmentRefs = std::array {vk::AttachmentReference {0, vk::ImageLayout::eColorAttachmentOptimal}};
+	const auto subpasses = std::array {vk::SubpassDescription {
+		{},
+		vk::PipelineBindPoint::eGraphics,
+		{},
+		attachmentRefs,
+	}};
 
 	return vk::raii::RenderPass {device, vk::RenderPassCreateInfo {{}, attachments, subpasses}};
 }
@@ -158,7 +218,7 @@ std::vector<vk::raii::Framebuffer> createVulkanFrameBuffers(
 		frameBuffers.emplace_back(
 			device, vk::FramebufferCreateInfo {
 						{},
-						renderPass,
+						*renderPass,
 						attachments,
 						imageExtent.width,
 						imageExtent.height,
