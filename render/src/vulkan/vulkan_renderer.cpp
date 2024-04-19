@@ -28,16 +28,6 @@ namespace dust::render::vulkan
 	const std::vector<vk::SurfaceFormatKHR> &availableFormats, const std::vector<vk::Format> &requiredFormats);
 
 VulkanRenderer::VulkanRenderer(
-	const vk::raii::PhysicalDevice &physicalDevice, uint32_t queueFamily, uint32_t queueCount)
-	: m_device {createVulkanDevice(physicalDevice, queueFamily, queueCount)},
-	  m_commandPool {createVulkanCommandPool(m_device, queueFamily)},
-	  m_renderPass {createVulkanRenderPass(m_device, vk::Format::eUndefined)},
-	  m_imageAvailableSemaphore {m_device, vk::SemaphoreCreateInfo {}},
-	  m_renderFence {m_device, vk::FenceCreateInfo {}},
-	  m_renderQueue {m_device, queueFamily, 0}
-{}
-
-VulkanRenderer::VulkanRenderer(
 	const vk::raii::SurfaceKHR &surface, const vk::raii::PhysicalDevice &physicalDevice, uint32_t queueFamily,
 	uint32_t queueCount)
 	: m_device {createVulkanDevice(physicalDevice, queueFamily, queueCount, {"VK_KHR_swapchain"})},
@@ -84,7 +74,7 @@ void VulkanRenderer::endFrame()
 	cmd.endRenderPass();
 	cmd.end();
 
-	m_device.resetFences({*m_renderFence});
+	m_device.resetFences({*m_renderFence});vk::raii::Semaphore
 
 	const auto waitSemaphores = std::array {*m_imageAvailableSemaphore};
 	const auto pipelineStageFlags =

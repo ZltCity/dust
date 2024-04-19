@@ -33,16 +33,13 @@ public:
 	Backend &operator=(const Backend &) = delete;
 	Backend &operator=(Backend &&) = delete;
 
-	[[nodiscard]] virtual std::unique_ptr<Renderer> createRenderer(std::initializer_list<Hint> hints) const = 0;
+	[[nodiscard]] virtual std::shared_ptr<Renderer> createRenderer(const std::vector<Hint> &hints) const = 0;
 
 	[[nodiscard]] virtual std::vector<Device> getSuitableDevices() const = 0;
 };
 
-[[nodiscard]] std::unique_ptr<Backend> createBackend(
-	BackendName backendName, const glue::ApplicationInfo &applicationInfo);
-
 #if defined(WITH_SDL)
-[[nodiscard]] std::unique_ptr<Backend> createBackend(
+[[nodiscard]] std::shared_ptr<Backend> createBackend(
 	BackendName backendName, const glue::ApplicationInfo &applicationInfo, SDL_Window *window);
 #endif
 

@@ -1,43 +1,34 @@
 #pragma once
 
+#include <memory>
 #include <optional>
 
 #include <vulkan/vulkan_raii.hpp>
 
 #include <dust/render/backend.hpp>
 
+#include "vulkan_basic_swapchain.hpp"
+
 namespace dust::render::vulkan
 {
 
-class VulkanBackend final : public Backend
+class VulkanBackend final : public Backend, public std::enable_shared_from_this<VulkanBackend>
 {
 public:
-	explicit VulkanBackend(const glue::ApplicationInfo &applicationInfo);
-
 #if defined(WITH_SDL)
 	VulkanBackend(const glue::ApplicationInfo &applicationInfo, SDL_Window *window);
 #endif
 
-	[[nodiscard]] std::unique_ptr<Renderer> createRenderer(std::initializer_list<Hint> hints) const final;
+	[[nodiscard]] std::shared_ptr<Renderer> createRenderer(const std::vector<Hint> &hints) const final;
 
 	[[nodiscard]] std::vector<Device> getSuitableDevices() const final;
 
 private:
-	struct SuitableQueueFamily
-	{
-		uint32_t queueFamily, queueCount;
-	};
+	using SuitablePhysicalDevice = std::pair<vk::raii::PhysicalDevice, uint32_t>;
 
-	struct SuitablePhysicalDevice
-	{
-		vk::raii::PhysicalDevice physicalDevice;
-		uint32_t physicalDeviceIndex;
-		SuitableQueueFamily queueFamily;
-	};
-
-	[[nodiscard]] std::vector<SuitablePhysicalDevice> getSuitablePhysicalDevices() const;
-	[[nodiscard]] std::optional<SuitableQueueFamily> getSuitableQueueFamily(
-		const vk::raii::PhysicalDevice &physicalDevice) const;
+	[[nodiscard]] std::vector<SuitablePhysicalDevice> getSuitablePhysicalDevices(
+		vk::QueueFlags queueFlags = vk::QueueFlagBits::eGraphics | vk::QueueFlagBits::eTransfer,
+		bool presentSupport = true) const;
 
 	[[nodiscard]] static SuitablePhysicalDevice choosePhysicalDevice(
 		const std::vector<SuitablePhysicalDevice> &suitablePhysicalDevices, const std::vector<Hint> &hints);

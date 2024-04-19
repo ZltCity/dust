@@ -1,5 +1,6 @@
 #pragma once
 
+#include <memory>
 #include <optional>
 
 #include <vulkan/vulkan_raii.hpp>
@@ -9,10 +10,9 @@
 namespace dust::render::vulkan
 {
 
-class VulkanRenderer final : public Renderer
+class VulkanRenderer final : public Renderer, public std::enable_shared_from_this<VulkanRenderer>
 {
 public:
-	VulkanRenderer(const vk::raii::PhysicalDevice &physicalDevice, uint32_t queueFamily, uint32_t queueCount);
 	VulkanRenderer(
 		const vk::raii::SurfaceKHR &surface, const vk::raii::PhysicalDevice &physicalDevice, uint32_t queueFamily,
 		uint32_t queueCount);
