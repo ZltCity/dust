@@ -1,4 +1,7 @@
 #include <algorithm>
+#include <iterator>
+#include <list>
+#include <numeric>
 
 #include <fmt/format.h>
 
@@ -45,6 +48,57 @@ namespace dust::render::vulkan
 }
 #endif
 
+[[nodiscard]] static auto getIndexedQueueFamilyProperties(
+	const std::vector<vk::QueueFamilyProperties> &queueFamilyProperties)
+{
+	auto queueFamilyIndex = uint32_t {};
+	auto indexedQueueFamilyProperties = std::list<std::pair<vk::QueueFamilyProperties, uint32_t>> {};
+
+	std::transform(
+		queueFamilyProperties.begin(), queueFamilyProperties.end(), std::back_inserter(indexedQueueFamilyProperties),
+		[&queueFamilyIndex](const vk::QueueFamilyProperties &prop) {
+			return std::make_pair(prop, queueFamilyIndex++);
+		});
+
+	return indexedQueueFamilyProperties;
+}
+
+[[nodiscard]] static SuitablePhysicalDevice choosePhysicalDevice(
+	const std::vector<SuitablePhysicalDevice> &suitablePhysicalDevices, const std::vector<Hint> &hints)
+{
+	const auto useDeviceHint =
+		std::find_if(hints.begin(), hints.end(), [](const Hint &hint) { return hint.name == HintName::UseDevice; });
+
+	if (useDeviceHint == hints.end())
+	{
+		return suitablePhysicalDevices.front();
+	}
+	else
+	{
+		const auto testDevice = [&useDeviceHint](const SuitablePhysicalDevice &device) {
+			auto result = false;
+
+			std::visit(
+				[&result, &device](auto &&value) {
+					using T = std::decay_t<decltype(value)>;
+
+					if constexpr (std::is_same_v<T, int32_t> or std::is_same_v<T, float>)
+						result = static_cast<uint32_t>(value) == device.deviceIndex;
+					if constexpr (std::is_same_v<T, std::string>)
+						result = value == device.physicalDevice.getProperties().deviceName;
+				},
+				useDeviceHint->value);
+
+			return result;
+		};
+		const auto physicalDevice = std::find_if(
+			suitablePhysicalDevices.begin(), suitablePhysicalDevices.end(),
+			[&testDevice](const SuitablePhysicalDevice &device) { return testDevice(device); });
+
+		return physicalDevice != suitablePhysicalDevices.end() ? *physicalDevice : suitablePhysicalDevices.front();
+	}
+}
+
 [[nodiscard]] static vk::raii::Instance createInstance(
 	const vk::raii::Context &context, const glue::ApplicationInfo &applicationInfo,
 	const std::vector<const char *> &requiredLayers, const std::vector<const char *> &requiredExtensions)
@@ -90,9 +144,9 @@ namespace dust::render::vulkan
 }
 #endif
 
-[[nodiscard]] vk::raii::Device createVulkanDevice(
-	const vk::raii::PhysicalDevice &physicalDevice, uint32_t queueFamily, uint32_t queueCount,
-	std::vector<const char *> requiredExtensions)
+[[nodiscard]] vk::raii::Device createDevice(
+	const vk::raii::PhysicalDevice &physicalDevice, const std::vector<SuitableQueueFamily> &queueFamilies,
+	const std::vector<const char *> &requiredExtensions)
 {
 	if (const auto missing =
 			checkExtensionsAvailability(physicalDevice.enumerateDeviceExtensionProperties(), requiredExtensions);
@@ -102,10 +156,16 @@ namespace dust::render::vulkan
 			fmt::format("Following device extensions are not available: {}.", fmt::join(missing, ", "))};
 	}
 
-	const auto queuePriorities = std::vector<float>(queueCount, 1.f);
-	const auto deviceQueueCreateInfo = std::array {vk::DeviceQueueCreateInfo {{}, queueFamily, queuePriorities}};
+	auto queueCreateInfos = std::vector<vk::DeviceQueueCreateInfo> {};
+	auto queuePriorities = std::vector<std::vector<float>> {};
 
-	return vk::raii::Device {physicalDevice, vk::DeviceCreateInfo {{}, deviceQueueCreateInfo, {}, requiredExtensions}};
+	for (const auto &queueFamily : queueFamilies)
+	{
+		queuePriorities.emplace_back(queueFamily.queueCount, 1.0f);
+		queueCreateInfos.emplace_back(vk::DeviceQueueCreateFlags {}, queueFamily.queueFamily, queuePriorities.back());
+	}
+
+	return vk::raii::Device {physicalDevice, vk::DeviceCreateInfo {{}, queueCreateInfos, {}, requiredExtensions}};
 }
 
 #if defined(WITH_SDL)
@@ -119,38 +179,55 @@ VulkanBackend::VulkanBackend(const glue::ApplicationInfo &applicationInfo, SDL_W
 
 std::shared_ptr<Renderer> VulkanBackend::createRenderer(const std::vector<Hint> &hints) const
 {
-	const auto suitablePhysicalDevices = getSuitablePhysicalDevices();
+	const auto suitablePhysicalDevices = getSuitablePhysicalDevices(getRequiredQueueFlags());
 
 	if (suitablePhysicalDevices.empty())
 	{
 		throw std::runtime_error {"Could not find suitable physical device."};
 	}
 
-	const auto physicalDevice = choosePhysicalDevice(suitablePhysicalDevices, hints);
+	const auto physicalDevice = choosePhysicalDevice(suitablePhysicalDevices, hints).physicalDevice;
+	auto queueFamilies = chooseQueueFamilies(physicalDevice, requiredQueueFlagBits);
 
-	//	return std::make_shared<VulkanRenderer>(
-	//		*m_surface, physicalDevice.physicalDevice, physicalDevice.queueFamily.queueFamily,
-	//		physicalDevice.queueFamily.queueCount);
-	return {};
+	return std::make_shared<VulkanRenderer>(
+		createDevice(physicalDevice, queueFamilies, getRequiredDeviceExtensions()), std::move(queueFamilies));
 }
 
 std::vector<Device> VulkanBackend::getSuitableDevices() const
 {
-	const auto suitablePhysicalDevices = getSuitablePhysicalDevices();
+	const auto suitablePhysicalDevices = getSuitablePhysicalDevices(getRequiredQueueFlags());
 	auto suitableDevices = std::vector<Device>(suitablePhysicalDevices.size());
 
 	std::transform(
 		suitablePhysicalDevices.begin(), suitablePhysicalDevices.end(), suitableDevices.begin(),
-		[](const SuitablePhysicalDevice &physicalDevice) {
-			return Device {
-				.name = physicalDevice.first.getProperties().deviceName, .systemIndex = physicalDevice.second};
+		[](const SuitablePhysicalDevice &device) {
+			return Device {.name = device.physicalDevice.getProperties().deviceName, .systemIndex = device.deviceIndex};
 		});
 
 	return suitableDevices;
 }
 
-auto VulkanBackend::getSuitablePhysicalDevices(vk::QueueFlags queueFlags, bool presentSupport) const
-	-> std::vector<SuitablePhysicalDevice>
+vk::QueueFlags VulkanBackend::getRequiredQueueFlags() const
+{
+	return std::accumulate(
+		requiredQueueFlagBits.begin(), requiredQueueFlagBits.end(), vk::QueueFlags {},
+		[](vk::QueueFlags a, vk::QueueFlags b) { return a | b; });
+}
+
+std::vector<const char *> VulkanBackend::getRequiredDeviceExtensions() const
+{
+	auto extensions = std::vector<const char *> {};
+
+	if (m_surface.has_value())
+	{
+		extensions.push_back("VK_KHR_swapchain");
+	}
+
+	return extensions;
+}
+
+std::vector<SuitablePhysicalDevice> VulkanBackend::getSuitablePhysicalDevices(
+	vk::QueueFlags queueFlags, bool presentSupport) const
 {
 	auto suitablePhysicalDevices = std::vector<SuitablePhysicalDevice> {};
 	auto physicalDeviceIndex = uint32_t {};
@@ -169,8 +246,7 @@ auto VulkanBackend::getSuitablePhysicalDevices(vk::QueueFlags queueFlags, bool p
 			for (const auto &queueFamilyProperties : physicalDevice.getQueueFamilyProperties())
 			{
 				foundFlags |= queueFamilyProperties.queueFlags;
-				hasPresentSupport = m_surface.has_value() and
-									physicalDevice.getSurfaceSupportKHR(queueFamilyIndex, *(m_surface.value()));
+				hasPresentSupport = checkPresentSupport(physicalDevice, queueFamilyIndex);
 
 				++queueFamilyIndex;
 			}
@@ -187,41 +263,38 @@ auto VulkanBackend::getSuitablePhysicalDevices(vk::QueueFlags queueFlags, bool p
 	return suitablePhysicalDevices;
 }
 
-auto VulkanBackend::choosePhysicalDevice(
-	const std::vector<SuitablePhysicalDevice> &suitablePhysicalDevices, const std::vector<Hint> &hints)
-	-> SuitablePhysicalDevice
+std::vector<SuitableQueueFamily> VulkanBackend::chooseQueueFamilies(
+	const vk::raii::PhysicalDevice &physicalDevice, const std::vector<vk::QueueFlagBits> &queueFlagBits) const
 {
-	const auto useDeviceHint =
-		std::find_if(hints.begin(), hints.end(), [](const Hint &hint) { return hint.name == HintName::UseDevice; });
+	auto queueFamilyProperties = getIndexedQueueFamilyProperties(physicalDevice.getQueueFamilyProperties());
+	auto queueFamilies = std::vector<SuitableQueueFamily> {};
 
-	if (useDeviceHint == hints.end())
+	for (auto flagBit : queueFlagBits)
 	{
-		return suitablePhysicalDevices.front();
+		for (auto propIt = queueFamilyProperties.begin(); propIt != queueFamilyProperties.end(); ++propIt)
+		{
+			const auto [queueFamily, familyIndex] = std::move(*propIt);
+
+			if (queueFamily.queueFlags & flagBit)
+			{
+				queueFamilies.emplace_back(
+					familyIndex, queueFamily.queueCount, vk::QueueFlags {flagBit},
+					checkPresentSupport(physicalDevice, familyIndex));
+
+				queueFamilyProperties.erase(propIt);
+				queueFamilyProperties.emplace_back(queueFamily, familyIndex);
+
+				break;
+			}
+		}
 	}
-	else
-	{
-		const auto testDevice = [&useDeviceHint](const SuitablePhysicalDevice &device) {
-			auto result = false;
 
-			std::visit(
-				[&result, &device](auto &&value) {
-					using T = std::decay_t<decltype(value)>;
+	return queueFamilies;
+}
 
-					if constexpr (std::is_same_v<T, int32_t> or std::is_same_v<T, float>)
-						result = static_cast<uint32_t>(value) == device.second;
-					if constexpr (std::is_same_v<T, std::string>)
-						result = value == device.first.getProperties().deviceName;
-				},
-				useDeviceHint->value);
-
-			return result;
-		};
-		const auto physicalDevice = std::find_if(
-			suitablePhysicalDevices.begin(), suitablePhysicalDevices.end(),
-			[&testDevice](const SuitablePhysicalDevice &device) { return testDevice(device); });
-
-		return physicalDevice != suitablePhysicalDevices.end() ? *physicalDevice : suitablePhysicalDevices.front();
-	}
+bool VulkanBackend::checkPresentSupport(const vk::raii::PhysicalDevice &physicalDevice, uint32_t queueFamily) const
+{
+	return m_surface.has_value() and physicalDevice.getSurfaceSupportKHR(queueFamily, *(m_surface.value()));
 }
 
 } // namespace dust::render::vulkan

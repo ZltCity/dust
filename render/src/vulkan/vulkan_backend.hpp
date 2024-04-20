@@ -8,6 +8,7 @@
 #include <dust/render/backend.hpp>
 
 #include "vulkan_basic_swapchain.hpp"
+#include "vulkan_helper_struct.hpp"
 
 namespace dust::render::vulkan
 {
@@ -24,14 +25,16 @@ public:
 	[[nodiscard]] std::vector<Device> getSuitableDevices() const final;
 
 private:
-	using SuitablePhysicalDevice = std::pair<vk::raii::PhysicalDevice, uint32_t>;
-
+	[[nodiscard]] vk::QueueFlags getRequiredQueueFlags() const;
+	[[nodiscard]] std::vector<const char *> getRequiredDeviceExtensions() const;
 	[[nodiscard]] std::vector<SuitablePhysicalDevice> getSuitablePhysicalDevices(
-		vk::QueueFlags queueFlags = vk::QueueFlagBits::eGraphics | vk::QueueFlagBits::eTransfer,
-		bool presentSupport = true) const;
+		vk::QueueFlags queueFlags, bool presentSupport = true) const;
+	[[nodiscard]] std::vector<SuitableQueueFamily> chooseQueueFamilies(
+		const vk::raii::PhysicalDevice &physicalDevice, const std::vector<vk::QueueFlagBits> &queueFlagBits) const;
+	[[nodiscard]] bool checkPresentSupport(const vk::raii::PhysicalDevice &physicalDevice, uint32_t queueFamily) const;
 
-	[[nodiscard]] static SuitablePhysicalDevice choosePhysicalDevice(
-		const std::vector<SuitablePhysicalDevice> &suitablePhysicalDevices, const std::vector<Hint> &hints);
+	const std::vector<vk::QueueFlagBits> requiredQueueFlagBits = {
+		vk::QueueFlagBits::eGraphics, vk::QueueFlagBits::eCompute, vk::QueueFlagBits::eTransfer};
 
 	vk::raii::Context m_context;
 	vk::raii::Instance m_instance;

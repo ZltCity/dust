@@ -7,7 +7,9 @@ VulkanWindowSwapchain::VulkanWindowSwapchain(vk::raii::SurfaceKHR surface) : m_s
 {}
 
 VulkanRendertarget VulkanWindowSwapchain::acquireNextImage()
-{}
+{
+	return {{}, {}, {}};
+}
 
 void VulkanWindowSwapchain::present(const VulkanRendertarget &rendertarget) const
 {

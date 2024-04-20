@@ -24,7 +24,7 @@ try
 
 	std::cout << std::endl;
 
-	auto renderer = backend->createRenderer({{dust::render::HintName::UseDevice, 1}});
+	auto renderer = backend->createRenderer({{dust::render::HintName::UseDevice, 0}});
 	auto quit = false;
 
 	while (not quit)
@@ -43,8 +43,8 @@ try
 			}
 		}
 
-		renderer->startFrame();
-		renderer->endFrame();
+//		renderer->startFrame();
+//		renderer->endFrame();
 	}
 
 	return 0;
