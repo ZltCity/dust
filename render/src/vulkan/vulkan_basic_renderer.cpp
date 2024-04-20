@@ -2,18 +2,13 @@
 
 #include <fmt/format.h>
 
-#include "vulkan_renderer.hpp"
+#include "vulkan_backend.hpp"
+#include "vulkan_basic_renderer.hpp"
 #include "vulkan_util.hpp"
 
 namespace dust::render::vulkan
 {
 
-//[[nodiscard]] vk::raii::Device createVulkanDevice(
-//	const vk::raii::PhysicalDevice &physicalDevice, uint32_t queueFamily, uint32_t queueCount,
-//	std::initializer_list<const char *> extensions = {});
-//[[nodiscard]] vk::raii::CommandPool createVulkanCommandPool(const vk::raii::Device &device, uint32_t queueFamily);
-//[[nodiscard]] std::vector<vk::raii::CommandBuffer> createVulkanCommandBuffers(
-//	const vk::raii::Device &device, const vk::raii::CommandPool &commandPool);
 //[[nodiscard]] vk::raii::SwapchainKHR createVulkanSwapchain(
 //	const vk::raii::Device &device, const vk::raii::SurfaceKHR &surface, const vk::SurfaceFormatKHR &surfaceFormat,
 //	const vk::SurfaceCapabilitiesKHR &surfaceCapabilities, uint32_t queueFamily);
@@ -28,8 +23,9 @@ namespace dust::render::vulkan
 //[[nodiscard]] vk::SurfaceFormatKHR chooseSurfaceFormat(
 //	const std::vector<vk::SurfaceFormatKHR> &availableFormats, const std::vector<vk::Format> &requiredFormats);
 
-VulkanRenderer::VulkanRenderer(vk::raii::Device device, std::vector<SuitableQueueFamily> queueFamilies)
-	: m_device {std::move(device)}, m_queueFamilies {std::move(queueFamilies)}
+VulkanBasicRenderer::VulkanBasicRenderer(
+	vk::raii::Device device, std::vector<SuitableQueueFamily> queueFamilies, std::shared_ptr<VulkanBackend> backend)
+	: m_backend {std::move(backend)}, m_device {std::move(device)}, m_queueFamilies {std::move(queueFamilies)}
 //	: m_device {createVulkanDevice(physicalDevice, queueFamily, queueCount, {"VK_KHR_swapchain"})},
 //	  m_commandPool {createVulkanCommandPool(m_device, queueFamily)},
 //	  m_commandBuffers {createVulkanCommandBuffers(m_device, m_commandPool)},
@@ -46,8 +42,8 @@ VulkanRenderer::VulkanRenderer(vk::raii::Device device, std::vector<SuitableQueu
 //	  m_renderQueue {m_device, queueFamily, 0}
 {}
 
- void VulkanRenderer::startFrame()
-{
+// void VulkanBasicRenderer::startFrame()
+//{
 //	const auto image = m_swapchain->acquireNextImage(UINT64_MAX, *m_imageAvailableSemaphore, {});
 //
 //	if (image.first != vk::Result::eSuccess)
@@ -63,12 +59,12 @@ VulkanRenderer::VulkanRenderer(vk::raii::Device device, std::vector<SuitableQueu
 //	cmd.begin(vk::CommandBufferBeginInfo {});
 //	cmd.beginRenderPass(
 //		vk::RenderPassBeginInfo {
-//			*m_renderPass, *m_frameBuffers[m_frameImageIndex], vk::Rect2D {{}, m_surfaceCapabilities->currentExtent}},
-//		vk::SubpassContents::eInline);
- }
+//			*m_renderPass, *m_frameBuffers[m_frameImageIndex], vk::Rect2D {{},
+//  m_surfaceCapabilities->currentExtent}}, 		vk::SubpassContents::eInline);
+//}
 
- void VulkanRenderer::endFrame()
-{
+// void VulkanBasicRenderer::endFrame()
+//{
 //	auto &cmd = m_commandBuffers.front();
 //
 //	cmd.endRenderPass();
@@ -93,39 +89,21 @@ VulkanRenderer::VulkanRenderer(vk::raii::Device device, std::vector<SuitableQueu
 //	m_renderQueue.presentKHR(vk::PresentInfoKHR {{}, swapchains, images});
 //
 //	m_device.waitIdle();
- }
-//
-// vk::raii::Device createVulkanDevice(
-//	const vk::raii::PhysicalDevice &physicalDevice, uint32_t queueFamily, uint32_t queueCount,
-//	std::initializer_list<const char *> extensions)
-//{
-//	if (const auto missing =
-//			checkExtensionsAvailability(physicalDevice.enumerateDeviceExtensionProperties(), extensions);
-//		not missing.empty())
-//	{
-//		throw std::runtime_error {
-//			fmt::format("Following device extensions are not available: {}.", fmt::join(missing, ", "))};
-//	}
-//
-//	const auto queuePriorities = std::vector<float>(queueCount, 1.f);
-//	const auto deviceQueueCreateInfo = std::array {vk::DeviceQueueCreateInfo {{}, queueFamily, queuePriorities}};
-//
-//	return vk::raii::Device {physicalDevice, vk::DeviceCreateInfo {{}, deviceQueueCreateInfo, {}, extensions}};
-// }
-//
-// vk::raii::CommandPool createVulkanCommandPool(const vk::raii::Device &device, uint32_t queueFamily)
-//{
-//	return vk::raii::CommandPool {
-//		device, vk::CommandPoolCreateInfo {vk::CommandPoolCreateFlagBits::eResetCommandBuffer, queueFamily}};
-// }
-//
-// std::vector<vk::raii::CommandBuffer> createVulkanCommandBuffers(
-//	const vk::raii::Device &device, const vk::raii::CommandPool &commandPool)
-//{
-//	return device.allocateCommandBuffers(
-//		vk::CommandBufferAllocateInfo {*commandPool, vk::CommandBufferLevel::ePrimary, 1});
-// }
-//
+//}
+
+vk::raii::CommandPool VulkanBasicRenderer::createCommandPool(const vk::raii::Device &device, uint32_t queueFamily)
+{
+	return vk::raii::CommandPool {
+		device, vk::CommandPoolCreateInfo {vk::CommandPoolCreateFlagBits::eResetCommandBuffer, queueFamily}};
+}
+
+std::vector<vk::raii::CommandBuffer> VulkanBasicRenderer::createCommandBuffers(
+	const vk::raii::Device &device, const vk::raii::CommandPool &commandPool)
+{
+	return device.allocateCommandBuffers(
+		vk::CommandBufferAllocateInfo {*commandPool, vk::CommandBufferLevel::ePrimary, 1});
+}
+
 // vk::raii::SwapchainKHR createVulkanSwapchain(
 //	const vk::raii::Device &device, const vk::raii::SurfaceKHR &surface, const vk::SurfaceFormatKHR &surfaceFormat,
 //	const vk::SurfaceCapabilitiesKHR &surfaceCapabilities, uint32_t queueFamily)

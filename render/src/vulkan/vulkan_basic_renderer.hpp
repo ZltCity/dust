@@ -1,7 +1,7 @@
 #pragma once
 
 #include <memory>
-#include <optional>
+#include <vector>
 
 #include <vulkan/vulkan_raii.hpp>
 
@@ -12,19 +12,26 @@
 namespace dust::render::vulkan
 {
 
-class VulkanRenderer final : public Renderer, public std::enable_shared_from_this<VulkanRenderer>
+class VulkanBasicRenderer : public Renderer, public std::enable_shared_from_this<VulkanBasicRenderer>
 {
 public:
-	VulkanRenderer(vk::raii::Device device, std::vector<SuitableQueueFamily> queueFamilies);
+	VulkanBasicRenderer(
+		vk::raii::Device device, std::vector<SuitableQueueFamily> queueFamilies,
+		std::shared_ptr<class VulkanBackend> backend);
 
-	void startFrame() final;
-	void endFrame() final;
+protected:
+	[[nodiscard]] vk::raii::CommandPool createCommandPool(const vk::raii::Device &device, uint32_t queueFamily);
+	[[nodiscard]] std::vector<vk::raii::CommandBuffer> createCommandBuffers(
+		const vk::raii::Device &device, const vk::raii::CommandPool &commandPool);
 
-private:
+	std::shared_ptr<class VulkanBackend> m_backend;
+
 	vk::raii::Device m_device;
+	vk::raii::CommandPool m_commandPool;
+	std::vector<vk::raii::CommandBuffer> m_commandBuffers;
+	vk::raii::RenderPass m_renderPass;
 	std::vector<SuitableQueueFamily> m_queueFamilies;
-	//	vk::raii::CommandPool m_commandPool;
-	//	std::vector<vk::raii::CommandBuffer> m_commandBuffers;
+
 	//	std::optional<vk::SurfaceFormatKHR> m_surfaceFormat;
 	//	std::optional<vk::SurfaceCapabilitiesKHR> m_surfaceCapabilities;
 	//	std::optional<vk::raii::SwapchainKHR> m_swapchain;

@@ -2,11 +2,9 @@ find_package(Vulkan REQUIRED)
 
 add_library(render STATIC
 	src/vulkan/vulkan_backend.cpp
-	src/vulkan/vulkan_basic_swapchain.cpp
-	src/vulkan/vulkan_renderer.cpp
-	src/vulkan/vulkan_rendertarget.cpp
+	src/vulkan/vulkan_basic_renderer.cpp
+	src/vulkan/vulkan_surface_renderer.cpp
 	src/vulkan/vulkan_util.cpp
-	src/vulkan/vulkan_window_swapchain.cpp
 	src/backend.cpp
 	src/renderer.cpp)
 

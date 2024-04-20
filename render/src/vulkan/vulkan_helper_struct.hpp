@@ -16,6 +16,7 @@ struct SuitablePhysicalDevice
 {
 	vk::raii::PhysicalDevice physicalDevice;
 	uint32_t deviceIndex;
+	std::vector<SuitableQueueFamily> queueFamilies;
 };
 
 } // namespace dust::render::vulkan

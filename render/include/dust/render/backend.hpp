@@ -33,7 +33,7 @@ public:
 	Backend &operator=(const Backend &) = delete;
 	Backend &operator=(Backend &&) = delete;
 
-	[[nodiscard]] virtual std::shared_ptr<Renderer> createRenderer(const std::vector<Hint> &hints) const = 0;
+	[[nodiscard]] virtual std::shared_ptr<Renderer> createRenderer(const std::vector<Hint> &hints) = 0;
 
 	[[nodiscard]] virtual std::vector<Device> getSuitableDevices() const = 0;
 };
