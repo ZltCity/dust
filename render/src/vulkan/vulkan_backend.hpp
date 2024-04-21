@@ -21,13 +21,15 @@ public:
 
 	[[nodiscard]] std::vector<Device> getSuitableDevices() const final;
 
-	[[nodiscard]] std::optional<vk::raii::SurfaceKHR> &getSurface();
 	[[nodiscard]] const std::optional<vk::raii::SurfaceKHR> &getSurface() const;
 
 	const std::vector<vk::PhysicalDeviceType> possibleDeviceTypes = {
 		vk::PhysicalDeviceType::eIntegratedGpu, vk::PhysicalDeviceType::eDiscreteGpu};
 	const std::vector<vk::QueueFlagBits> requiredQueueFlags = {
 		vk::QueueFlagBits::eGraphics, vk::QueueFlagBits::eCompute, vk::QueueFlagBits::eTransfer};
+	const std::vector<vk::Format> possibleSurfaceFormats = {vk::Format::eR8G8B8A8Unorm, vk::Format::eB8G8R8A8Unorm};
+	const std::vector<vk::Format> possibleDepthBufferFormats = {
+		vk::Format::eD32Sfloat, vk::Format::eD32SfloatS8Uint, vk::Format::eD24UnormS8Uint};
 
 private:
 	[[nodiscard]] static std::vector<const char *> getRequiredInstanceLayers();

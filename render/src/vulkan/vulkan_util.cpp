@@ -101,7 +101,7 @@ std::vector<std::pair<vk::QueueFamilyProperties, uint32_t>> getSuitableQueueFami
 		}
 
 		if (foundFlags != vk::QueueFlagBits {} and
-			(not surface.has_value() or physicalDevice.getSurfaceSupportKHR(queueFamilyIndex, surface.value())))
+			(not surface.has_value() or physicalDevice.getSurfaceSupportKHR(queueFamilyIndex, *(surface.value()))))
 		{
 			suitableQueueFamilies.emplace_back(queueFamilyProperties, queueFamilyIndex);
 		}

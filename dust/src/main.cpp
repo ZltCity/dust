@@ -24,7 +24,8 @@ try
 
 	std::cout << std::endl;
 
-	auto renderer = backend->createRenderer({{dust::render::HintName::UseDevice, 0}});
+	auto renderer = backend->createRenderer({{dust::render::HintName::UseDevice, 1}});
+	auto frame = renderer->createFrame();
 	auto quit = false;
 
 	while (not quit)

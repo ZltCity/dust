@@ -2,9 +2,11 @@ find_package(Vulkan REQUIRED)
 
 add_library(render STATIC
 	src/vulkan/vulkan_backend.cpp
+	src/vulkan/vulkan_frame.cpp
 	src/vulkan/vulkan_renderer.cpp
 	src/vulkan/vulkan_util.cpp
 	src/backend.cpp
+	src/frame.cpp
 	src/renderer.cpp)
 
 add_library(dust::render ALIAS render)

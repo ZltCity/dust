@@ -48,11 +48,6 @@ std::vector<Device> VulkanBackend::getSuitableDevices() const
 	return suitableDevices;
 }
 
-std::optional<vk::raii::SurfaceKHR> &VulkanBackend::getSurface()
-{
-	return m_surface;
-}
-
 const std::optional<vk::raii::SurfaceKHR> &VulkanBackend::getSurface() const
 {
 	return m_surface;

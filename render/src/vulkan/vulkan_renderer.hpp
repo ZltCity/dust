@@ -16,9 +16,19 @@ class VulkanRenderer : public Renderer, public std::enable_shared_from_this<Vulk
 public:
 	VulkanRenderer(vk::raii::PhysicalDevice physicalDevice, std::shared_ptr<class VulkanBackend> backend);
 
+	std::shared_ptr<Frame> createFrame() final;
+
+	const vk::raii::Device &getDevice() const;
+
 private:
 	[[nodiscard]] static std::vector<const char *> getRequiredDeviceExtensions(
 		const std::optional<vk::raii::SurfaceKHR> &surface);
+
+	[[nodiscard]] static vk::SurfaceFormatKHR chooseSurfaceFormat(
+		const vk::raii::PhysicalDevice &physicalDevice, const vk::raii::SurfaceKHR &surface,
+		const std::vector<vk::Format> &possibleFormats);
+	[[nodiscard]] static vk::Format chooseDepthBufferFormat(
+		const vk::raii::PhysicalDevice &physicalDevice, const std::vector<vk::Format> &possibleFormats);
 
 	[[nodiscard]] static vk::raii::Device createDevice(
 		const VulkanBackend &backend, const vk::raii::PhysicalDevice &physicalDevice);
@@ -26,6 +36,12 @@ private:
 		const VulkanBackend &backend, const vk::raii::PhysicalDevice &physicalDevice, const vk::raii::Device &device);
 	//	[[nodiscard]] std::vector<vk::raii::CommandBuffer> createCommandBuffers(
 	//		const vk::raii::Device &device, const vk::raii::CommandPool &commandPool);
+	[[nodiscard]] static std::pair<vk::raii::SwapchainKHR, vk::SurfaceFormatKHR> createSwapchain(
+		const VulkanBackend &backend, const vk::raii::PhysicalDevice &physicalDevice, const vk::raii::Device &device,
+		const std::vector<std::pair<vk::raii::CommandPool, uint32_t>> &commandPools);
+	[[nodiscard]] static vk::raii::RenderPass createRenderPass(
+		const VulkanBackend &backend, const vk::raii::PhysicalDevice &physicalDevice, const vk::raii::Device &device,
+		vk::Format colorAttachmentFormat);
 
 	std::shared_ptr<class VulkanBackend> m_backend;
 
