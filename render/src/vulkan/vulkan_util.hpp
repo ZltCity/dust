@@ -1,5 +1,6 @@
 #pragma once
 
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -15,16 +16,10 @@ namespace dust::render::vulkan
 	const std::vector<vk::ExtensionProperties> &extensionProperties, const std::vector<const char *> &extensionNames);
 
 [[nodiscard]] std::vector<std::pair<vk::raii::PhysicalDevice, uint32_t>> getSuitablePhysicalDevices(
-	const vk::raii::Instance &instance, const std::vector<vk::PhysicalDeviceType> &possibleTypes,
-	const std::vector<vk::QueueFlagBits> &requiredQueueFlags);
-[[nodiscard]] std::vector<std::pair<vk::raii::PhysicalDevice, uint32_t>> getSuitablePhysicalDevices(
-	const vk::raii::Instance &instance, const vk::raii::SurfaceKHR &surface,
+	const vk::raii::Instance &instance, const std::optional<vk::raii::SurfaceKHR> &surface,
 	const std::vector<vk::PhysicalDeviceType> &possibleTypes, const std::vector<vk::QueueFlagBits> &requiredQueueFlags);
-
 [[nodiscard]] std::vector<std::pair<vk::QueueFamilyProperties, uint32_t>> getSuitableQueueFamilies(
-	const vk::raii::PhysicalDevice &physicalDevice, const std::vector<vk::QueueFlagBits> &requiredQueueFlags);
-[[nodiscard]] std::vector<std::pair<vk::QueueFamilyProperties, uint32_t>> getSuitableQueueFamilies(
-	const vk::raii::SurfaceKHR &surface, const vk::raii::PhysicalDevice &physicalDevice,
+	const vk::raii::PhysicalDevice &physicalDevice, const std::optional<vk::raii::SurfaceKHR> &surface,
 	const std::vector<vk::QueueFlagBits> &requiredQueueFlags);
 
 } // namespace dust::render::vulkan

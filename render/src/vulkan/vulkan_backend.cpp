@@ -1,8 +1,3 @@
-#include <algorithm>
-#include <deque>
-#include <iterator>
-#include <numeric>
-
 #include <fmt/format.h>
 
 #if defined(WITH_SDL)
@@ -10,8 +5,7 @@
 #endif
 
 #include "vulkan_backend.hpp"
-#include "vulkan_error.hpp"
-#include "vulkan_surface_renderer.hpp"
+#include "vulkan_renderer.hpp"
 #include "vulkan_util.hpp"
 
 namespace dust::render::vulkan
@@ -29,54 +23,39 @@ VulkanBackend::VulkanBackend(const glue::ApplicationInfo &applicationInfo, SDL_W
 std::shared_ptr<Renderer> VulkanBackend::createRenderer(const std::vector<Hint> &hints)
 {
 	const auto suitablePhysicalDevices =
-		m_surface.has_value()
-			? getSuitablePhysicalDevices(m_instance, m_surface.value(), possibleDeviceTypes, requiredQueueFlags)
-			: getSuitablePhysicalDevices(m_instance, possibleDeviceTypes, requiredQueueFlags);
+		getSuitablePhysicalDevices(m_instance, m_surface, possibleDeviceTypes, requiredQueueFlags);
 
 	if (suitablePhysicalDevices.empty())
 	{
 		throw std::runtime_error {"Could not find suitable physical device."};
 	}
 
-	const auto physicalDevice = choosePhysicalDevice(suitablePhysicalDevices, hints);
-
-	if (m_surface.has_value())
-	{
-		return std::make_shared<VulkanSurfaceRenderer>(
-			m_surface.value(),
-			createDevice(physicalDevice.physicalDevice, physicalDevice.queueFamilies, getRequiredDeviceExtensions()),
-			physicalDevice.queueFamilies, shared_from_this());
-	}
-	else
-	{
-		throw HeadlessNotImplemented {};
-	}
+	return std::make_shared<VulkanRenderer>(choosePhysicalDevice(suitablePhysicalDevices, hints), shared_from_this());
 }
 
 std::vector<Device> VulkanBackend::getSuitableDevices() const
 {
-	const auto suitablePhysicalDevices = getSuitablePhysicalDevices();
+	const auto suitablePhysicalDevices =
+		getSuitablePhysicalDevices(m_instance, m_surface, possibleDeviceTypes, requiredQueueFlags);
 	auto suitableDevices = std::vector<Device>(suitablePhysicalDevices.size());
 
 	std::transform(
 		suitablePhysicalDevices.begin(), suitablePhysicalDevices.end(), suitableDevices.begin(),
-		[](const SuitablePhysicalDevice &device) {
-			return Device {.name = device.physicalDevice.getProperties().deviceName, .systemIndex = device.deviceIndex};
+		[](const std::pair<vk::raii::PhysicalDevice, uint32_t> &device) {
+			return Device {.name = std::get<0>(device).getProperties().deviceName, .systemIndex = std::get<1>(device)};
 		});
 
 	return suitableDevices;
 }
 
-std::vector<const char *> VulkanBackend::getRequiredDeviceExtensions() const
+std::optional<vk::raii::SurfaceKHR> &VulkanBackend::getSurface()
 {
-	auto extensions = std::vector<const char *> {};
+	return m_surface;
+}
 
-	if (m_surface.has_value())
-	{
-		extensions.push_back("VK_KHR_swapchain");
-	}
-
-	return extensions;
+const std::optional<vk::raii::SurfaceKHR> &VulkanBackend::getSurface() const
+{
+	return m_surface;
 }
 
 std::vector<const char *> VulkanBackend::getRequiredInstanceLayers()
@@ -110,7 +89,7 @@ std::vector<const char *> VulkanBackend::getRequiredInstanceExtensions(SDL_Windo
 }
 #endif
 
-std::pair<vk::raii::PhysicalDevice, uint32_t> VulkanBackend::choosePhysicalDevice(
+vk::raii::PhysicalDevice VulkanBackend::choosePhysicalDevice(
 	const std::vector<std::pair<vk::raii::PhysicalDevice, uint32_t>> &suitablePhysicalDevices,
 	const std::vector<Hint> &hints)
 {
@@ -119,7 +98,7 @@ std::pair<vk::raii::PhysicalDevice, uint32_t> VulkanBackend::choosePhysicalDevic
 
 	if (useDeviceHint == hints.end())
 	{
-		return suitablePhysicalDevices.front();
+		return std::get<0>(suitablePhysicalDevices.front());
 	}
 	else
 	{
@@ -143,7 +122,8 @@ std::pair<vk::raii::PhysicalDevice, uint32_t> VulkanBackend::choosePhysicalDevic
 			suitablePhysicalDevices.begin(), suitablePhysicalDevices.end(),
 			[&testDevice](const std::pair<vk::raii::PhysicalDevice, uint32_t> &device) { return testDevice(device); });
 
-		return physicalDevice != suitablePhysicalDevices.end() ? *physicalDevice : suitablePhysicalDevices.front();
+		return std::get<0>(
+			physicalDevice != suitablePhysicalDevices.end() ? *physicalDevice : suitablePhysicalDevices.front());
 	}
 }
 
@@ -191,30 +171,5 @@ vk::raii::SurfaceKHR VulkanBackend::createSurface(const vk::raii::Instance &inst
 	return vk::raii::SurfaceKHR {instance, surface};
 }
 #endif
-
-vk::raii::Device VulkanBackend::createDevice(
-	const vk::raii::PhysicalDevice &physicalDevice, const std::vector<SuitableQueueFamily> &queueFamilies,
-	const std::vector<const char *> &requiredExtensions)
-{
-	if (const auto missing =
-			checkExtensionsAvailability(physicalDevice.enumerateDeviceExtensionProperties(), requiredExtensions);
-		not missing.empty())
-	{
-		throw std::runtime_error {
-			fmt::format("Following device extensions are not available: {}.", fmt::join(missing, ", "))};
-	}
-
-	auto queueCreateInfos = std::vector<vk::DeviceQueueCreateInfo> {};
-	auto queuePriorities = std::vector<std::vector<float>> {};
-
-	for (const auto &queueFamily : queueFamilies)
-	{
-		queueCreateInfos.emplace_back(
-			vk::DeviceQueueCreateFlags {}, queueFamily.familyIndex,
-			queuePriorities.emplace_back(queueFamily.queueCount, 1.0f));
-	}
-
-	return vk::raii::Device {physicalDevice, vk::DeviceCreateInfo {{}, queueCreateInfos, {}, requiredExtensions}};
-}
 
 } // namespace dust::render::vulkan

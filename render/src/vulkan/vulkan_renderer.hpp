@@ -1,6 +1,7 @@
 #pragma once
 
 #include <memory>
+#include <optional>
 #include <vector>
 
 #include <vulkan/vulkan_raii.hpp>
@@ -10,24 +11,27 @@
 namespace dust::render::vulkan
 {
 
-class VulkanBasicRenderer : public Renderer, public std::enable_shared_from_this<VulkanBasicRenderer>
+class VulkanRenderer : public Renderer, public std::enable_shared_from_this<VulkanRenderer>
 {
 public:
-	VulkanBasicRenderer(
-		std::pair<vk::raii::PhysicalDevice, uint32_t> physicalDevice,
-		std::shared_ptr<class VulkanBackend> backend);
+	VulkanRenderer(vk::raii::PhysicalDevice physicalDevice, std::shared_ptr<class VulkanBackend> backend);
 
-protected:
+private:
+	[[nodiscard]] static std::vector<const char *> getRequiredDeviceExtensions(
+		const std::optional<vk::raii::SurfaceKHR> &surface);
+
+	[[nodiscard]] static vk::raii::Device createDevice(
+		const VulkanBackend &backend, const vk::raii::PhysicalDevice &physicalDevice);
 	[[nodiscard]] static std::vector<std::pair<vk::raii::CommandPool, uint32_t>> createCommandPools(
-		const vk::raii::Device &device, const std::vector<std::pair<vk::QueueFamilyProperties, uint32_t>> &queueFamilies);
+		const VulkanBackend &backend, const vk::raii::PhysicalDevice &physicalDevice, const vk::raii::Device &device);
 	//	[[nodiscard]] std::vector<vk::raii::CommandBuffer> createCommandBuffers(
 	//		const vk::raii::Device &device, const vk::raii::CommandPool &commandPool);
 
 	std::shared_ptr<class VulkanBackend> m_backend;
 
-	std::pair<vk::raii::PhysicalDevice, uint32_t> m_physicalDevice;
+	vk::raii::PhysicalDevice m_physicalDevice;
 	vk::raii::Device m_device;
-	std::vector<CommandPool> m_commandPools;
+	std::vector<std::pair<vk::raii::CommandPool, uint32_t>> m_commandPools;
 
 	//	std::optional<vk::SurfaceFormatKHR> m_surfaceFormat;
 	//	std::optional<vk::SurfaceCapabilitiesKHR> m_surfaceCapabilities;

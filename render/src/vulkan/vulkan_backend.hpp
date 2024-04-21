@@ -21,15 +21,21 @@ public:
 
 	[[nodiscard]] std::vector<Device> getSuitableDevices() const final;
 
-private:
-	[[nodiscard]] std::vector<const char *> getRequiredDeviceExtensions() const;
+	[[nodiscard]] std::optional<vk::raii::SurfaceKHR> &getSurface();
+	[[nodiscard]] const std::optional<vk::raii::SurfaceKHR> &getSurface() const;
 
+	const std::vector<vk::PhysicalDeviceType> possibleDeviceTypes = {
+		vk::PhysicalDeviceType::eIntegratedGpu, vk::PhysicalDeviceType::eDiscreteGpu};
+	const std::vector<vk::QueueFlagBits> requiredQueueFlags = {
+		vk::QueueFlagBits::eGraphics, vk::QueueFlagBits::eCompute, vk::QueueFlagBits::eTransfer};
+
+private:
 	[[nodiscard]] static std::vector<const char *> getRequiredInstanceLayers();
 #if defined(WITH_SDL)
 	[[nodiscard]] static std::vector<const char *> getRequiredInstanceExtensions(SDL_Window *window);
 #endif
 
-	[[nodiscard]] static std::pair<vk::raii::PhysicalDevice, uint32_t> choosePhysicalDevice(
+	[[nodiscard]] static vk::raii::PhysicalDevice choosePhysicalDevice(
 		const std::vector<std::pair<vk::raii::PhysicalDevice, uint32_t>> &suitablePhysicalDevices,
 		const std::vector<Hint> &hints);
 
@@ -39,14 +45,6 @@ private:
 #if defined(WITH_SDL)
 	[[nodiscard]] static vk::raii::SurfaceKHR createSurface(const vk::raii::Instance &instance, SDL_Window *window);
 #endif
-	[[nodiscard]] static vk::raii::Device createDevice(
-		const vk::raii::PhysicalDevice &physicalDevice, const std::vector<SuitableQueueFamily> &queueFamilies,
-		const std::vector<const char *> &requiredExtensions);
-
-	const std::vector<vk::PhysicalDeviceType> possibleDeviceTypes = {
-		vk::PhysicalDeviceType::eIntegratedGpu, vk::PhysicalDeviceType::eDiscreteGpu};
-	const std::vector<vk::QueueFlagBits> requiredQueueFlags = {
-		vk::QueueFlagBits::eGraphics, vk::QueueFlagBits::eCompute, vk::QueueFlagBits::eTransfer};
 
 	vk::raii::Context m_context;
 	vk::raii::Instance m_instance;

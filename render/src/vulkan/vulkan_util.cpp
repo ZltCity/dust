@@ -52,14 +52,7 @@ std::vector<std::string> checkExtensionsAvailability(
 }
 
 std::vector<std::pair<vk::raii::PhysicalDevice, uint32_t>> getSuitablePhysicalDevices(
-	const vk::raii::Instance &instance, const std::vector<vk::PhysicalDeviceType> &possibleTypes,
-	const std::vector<vk::QueueFlagBits> &requiredQueueFlags)
-{
-	return getSuitablePhysicalDevices(instance, vk::raii::SurfaceKHR {nullptr}, possibleTypes, requiredQueueFlags);
-}
-
-std::vector<std::pair<vk::raii::PhysicalDevice, uint32_t>> getSuitablePhysicalDevices(
-	const vk::raii::Instance &instance, const vk::raii::SurfaceKHR &surface,
+	const vk::raii::Instance &instance, const std::optional<vk::raii::SurfaceKHR> &surface,
 	const std::vector<vk::PhysicalDeviceType> &possibleTypes, const std::vector<vk::QueueFlagBits> &requiredQueueFlags)
 {
 	auto suitablePhysicalDevices = std::vector<std::pair<vk::raii::PhysicalDevice, uint32_t>> {};
@@ -68,16 +61,10 @@ std::vector<std::pair<vk::raii::PhysicalDevice, uint32_t>> getSuitablePhysicalDe
 	for (const auto &physicalDevice : instance.enumeratePhysicalDevices())
 	{
 		if (std::find(possibleTypes.begin(), possibleTypes.end(), physicalDevice.getProperties().deviceType) !=
-			possibleTypes.end())
+				possibleTypes.end() and
+			not getSuitableQueueFamilies(physicalDevice, surface, requiredQueueFlags).empty())
 		{
-			const auto queueFamilies = static_cast<bool>(*surface)
-										   ? getSuitableQueueFamilies(surface, physicalDevice, requiredQueueFlags)
-										   : getSuitableQueueFamilies(physicalDevice, requiredQueueFlags);
-
-			if (not queueFamilies.empty())
-			{
-				suitablePhysicalDevices.emplace_back(physicalDevice, physicalDeviceIndex);
-			}
+			suitablePhysicalDevices.emplace_back(physicalDevice, physicalDeviceIndex);
 		}
 
 		++physicalDeviceIndex;
@@ -87,7 +74,8 @@ std::vector<std::pair<vk::raii::PhysicalDevice, uint32_t>> getSuitablePhysicalDe
 }
 
 std::vector<std::pair<vk::QueueFamilyProperties, uint32_t>> getSuitableQueueFamilies(
-	const vk::raii::PhysicalDevice &physicalDevice, const std::vector<vk::QueueFlagBits> &requiredQueueFlags)
+	const vk::raii::PhysicalDevice &physicalDevice, const std::optional<vk::raii::SurfaceKHR> &surface,
+	const std::vector<vk::QueueFlagBits> &requiredQueueFlags)
 {
 	auto queueFamilyIndex = uint32_t {};
 	auto queueFlagBits = std::deque<vk::QueueFlagBits>(requiredQueueFlags.begin(), requiredQueueFlags.end());
@@ -112,7 +100,8 @@ std::vector<std::pair<vk::QueueFamilyProperties, uint32_t>> getSuitableQueueFami
 			}
 		}
 
-		if (foundFlags != vk::QueueFlagBits {})
+		if (foundFlags != vk::QueueFlagBits {} and
+			(not surface.has_value() or physicalDevice.getSurfaceSupportKHR(queueFamilyIndex, surface.value())))
 		{
 			suitableQueueFamilies.emplace_back(queueFamilyProperties, queueFamilyIndex);
 		}
@@ -121,19 +110,6 @@ std::vector<std::pair<vk::QueueFamilyProperties, uint32_t>> getSuitableQueueFami
 	}
 
 	return suitableQueueFamilies;
-}
-
-std::vector<std::pair<vk::QueueFamilyProperties, uint32_t>> getSuitableQueueFamilies(
-	const vk::raii::SurfaceKHR &surface, const vk::raii::PhysicalDevice &physicalDevice,
-	const std::vector<vk::QueueFlagBits> &requiredQueueFlags)
-{
-	auto queueFamilies = getSuitableQueueFamilies(physicalDevice, requiredQueueFlags);
-
-	std::erase_if(queueFamilies, [&surface, &physicalDevice](auto &&family) {
-		return not physicalDevice.getSurfaceSupportKHR(std::get<1>(family), *surface);
-	});
-
-	return queueFamilies;
 }
 
 } // namespace dust::render::vulkan

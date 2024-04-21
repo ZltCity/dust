@@ -3,7 +3,7 @@
 #include <fmt/format.h>
 
 #include "vulkan_backend.hpp"
-#include "vulkan_basic_renderer.hpp"
+#include "vulkan_renderer.hpp"
 #include "vulkan_util.hpp"
 
 namespace dust::render::vulkan
@@ -23,13 +23,11 @@ namespace dust::render::vulkan
 //[[nodiscard]] vk::SurfaceFormatKHR chooseSurfaceFormat(
 //	const std::vector<vk::SurfaceFormatKHR> &availableFormats, const std::vector<vk::Format> &requiredFormats);
 
-VulkanBasicRenderer::VulkanBasicRenderer(
-	std::pair<vk::raii::PhysicalDevice, uint32_t> physicalDevice,
-	std::shared_ptr<VulkanBackend> backend)
+VulkanRenderer::VulkanRenderer(vk::raii::PhysicalDevice physicalDevice, std::shared_ptr<VulkanBackend> backend)
 	: m_backend {std::move(backend)},
-	  m_physicalDevice{std::move(physicalDevice)},
-	  m_device {std::move(device)},
-	  m_commandPools {createCommandPools(m_device, queueFamilies)}
+	  m_physicalDevice {std::move(physicalDevice)},
+	  m_device {createDevice(*m_backend, m_physicalDevice)},
+	  m_commandPools {createCommandPools(*m_backend, m_physicalDevice, m_device)}
 //	  m_commandBuffers {createVulkanCommandBuffers(m_device, m_commandPool)},
 //	  m_surfaceFormat {chooseSurfaceFormat(
 //		  physicalDevice.getSurfaceFormatsKHR(*surface), {vk::Format::eR8G8B8A8Unorm, vk::Format::eB8G8R8A8Unorm})},
@@ -43,6 +41,19 @@ VulkanBasicRenderer::VulkanBasicRenderer(
 //	  m_renderFence {m_device, vk::FenceCreateInfo {}},
 //	  m_renderQueue {m_device, queueFamily, 0}
 {}
+
+std::vector<const char *> VulkanRenderer::getRequiredDeviceExtensions(
+	const std::optional<vk::raii::SurfaceKHR> &surface)
+{
+	auto extensions = std::vector<const char *> {};
+
+	if (surface.has_value())
+	{
+		extensions.push_back("VK_KHR_swapchain");
+	}
+
+	return extensions;
+}
 
 // void VulkanBasicRenderer::startFrame()
 //{
@@ -93,30 +104,56 @@ VulkanBasicRenderer::VulkanBasicRenderer(
 //	m_device.waitIdle();
 //}
 
-std::vector<std::pair<vk::raii::CommandPool, uint32_t>> VulkanBasicRenderer::createCommandPools(
-	const vk::raii::Device &device, const std::vector<SuitableQueueFamily> &queueFamilies)
+vk::raii::Device VulkanRenderer::createDevice(
+	const VulkanBackend &backend, const vk::raii::PhysicalDevice &physicalDevice)
 {
-	auto commandPools = std::vector<CommandPool> {};
+	const auto requiredExtensions = getRequiredDeviceExtensions(backend.getSurface());
 
-	for (const auto &queueFamily : queueFamilies)
+	if (const auto missing =
+			checkExtensionsAvailability(physicalDevice.enumerateDeviceExtensionProperties(), requiredExtensions);
+		not missing.empty())
+	{
+		throw std::runtime_error {
+			fmt::format("Following device extensions are not available: {}.", fmt::join(missing, ", "))};
+	}
+
+	auto queueCreateInfos = std::vector<vk::DeviceQueueCreateInfo> {};
+	auto queuePriorities = std::vector<std::vector<float>> {};
+
+	for (const auto &[props, index] :
+		 getSuitableQueueFamilies(physicalDevice, backend.getSurface(), backend.requiredQueueFlags))
+	{
+		queueCreateInfos.emplace_back(
+			vk::DeviceQueueCreateFlags {}, index, queuePriorities.emplace_back(props.queueCount, 1.0f));
+	}
+
+	return vk::raii::Device {physicalDevice, vk::DeviceCreateInfo {{}, queueCreateInfos, {}, requiredExtensions}};
+}
+
+std::vector<std::pair<vk::raii::CommandPool, uint32_t>> VulkanRenderer::createCommandPools(
+	const VulkanBackend &backend, const vk::raii::PhysicalDevice &physicalDevice, const vk::raii::Device &device)
+{
+	auto commandPools = std::vector<std::pair<vk::raii::CommandPool, uint32_t>> {};
+
+	for (const auto &[queueFamilyProperties, queueFamilyIndex] :
+		 getSuitableQueueFamilies(physicalDevice, backend.getSurface(), backend.requiredQueueFlags))
 	{
 		commandPools.emplace_back(
 			vk::raii::CommandPool {
 				device,
-				vk::CommandPoolCreateInfo {
-					vk::CommandPoolCreateFlagBits::eResetCommandBuffer, queueFamily.familyIndex}},
-			queueFamily);
+				vk::CommandPoolCreateInfo {vk::CommandPoolCreateFlagBits::eResetCommandBuffer, queueFamilyIndex}},
+			queueFamilyIndex);
 	}
 
 	return commandPools;
 }
 
-//std::vector<vk::raii::CommandBuffer> VulkanBasicRenderer::createCommandBuffers(
+// std::vector<vk::raii::CommandBuffer> VulkanBasicRenderer::createCommandBuffers(
 //	const vk::raii::Device &device, const vk::raii::CommandPool &commandPool)
 //{
 //	return device.allocateCommandBuffers(
 //		vk::CommandBufferAllocateInfo {*commandPool, vk::CommandBufferLevel::ePrimary, 1});
-//}
+// }
 
 // vk::raii::SwapchainKHR createVulkanSwapchain(
 //	const vk::raii::Device &device, const vk::raii::SurfaceKHR &surface, const vk::SurfaceFormatKHR &surfaceFormat,
