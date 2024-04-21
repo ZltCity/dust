@@ -7,8 +7,6 @@
 
 #include <dust/render/backend.hpp>
 
-#include "vulkan_helper_struct.hpp"
-
 namespace dust::render::vulkan
 {
 
@@ -24,21 +22,16 @@ public:
 	[[nodiscard]] std::vector<Device> getSuitableDevices() const final;
 
 private:
-	[[nodiscard]] vk::QueueFlags getRequiredQueueFlags() const;
 	[[nodiscard]] std::vector<const char *> getRequiredDeviceExtensions() const;
-	[[nodiscard]] std::vector<SuitablePhysicalDevice> getSuitablePhysicalDevices(
-		vk::QueueFlags queueFlags, bool needPresentSupport = true) const;
-	[[nodiscard]] std::vector<SuitableQueueFamily> getSuitableQueueFamilies(
-		const vk::raii::PhysicalDevice &physicalDevice, bool needPresentSupport = true) const;
-	[[nodiscard]] bool getPresentSupport(const vk::raii::PhysicalDevice &physicalDevice, uint32_t queueFamily) const;
 
 	[[nodiscard]] static std::vector<const char *> getRequiredInstanceLayers();
 #if defined(WITH_SDL)
 	[[nodiscard]] static std::vector<const char *> getRequiredInstanceExtensions(SDL_Window *window);
 #endif
 
-	[[nodiscard]] static SuitablePhysicalDevice choosePhysicalDevice(
-		const std::vector<SuitablePhysicalDevice> &suitablePhysicalDevices, const std::vector<Hint> &hints);
+	[[nodiscard]] static std::pair<vk::raii::PhysicalDevice, uint32_t> choosePhysicalDevice(
+		const std::vector<std::pair<vk::raii::PhysicalDevice, uint32_t>> &suitablePhysicalDevices,
+		const std::vector<Hint> &hints);
 
 	[[nodiscard]] static vk::raii::Instance createInstance(
 		const vk::raii::Context &context, const glue::ApplicationInfo &applicationInfo,
@@ -50,7 +43,9 @@ private:
 		const vk::raii::PhysicalDevice &physicalDevice, const std::vector<SuitableQueueFamily> &queueFamilies,
 		const std::vector<const char *> &requiredExtensions);
 
-	const std::vector<vk::QueueFlagBits> requiredQueueFlagBits = {
+	const std::vector<vk::PhysicalDeviceType> possibleDeviceTypes = {
+		vk::PhysicalDeviceType::eIntegratedGpu, vk::PhysicalDeviceType::eDiscreteGpu};
+	const std::vector<vk::QueueFlagBits> requiredQueueFlags = {
 		vk::QueueFlagBits::eGraphics, vk::QueueFlagBits::eCompute, vk::QueueFlagBits::eTransfer};
 
 	vk::raii::Context m_context;

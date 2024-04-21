@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <deque>
 #include <set>
 
 #include "vulkan_util.hpp"
@@ -48,6 +49,91 @@ std::vector<std::string> checkExtensionsAvailability(
 	}
 
 	return missing;
+}
+
+std::vector<std::pair<vk::raii::PhysicalDevice, uint32_t>> getSuitablePhysicalDevices(
+	const vk::raii::Instance &instance, const std::vector<vk::PhysicalDeviceType> &possibleTypes,
+	const std::vector<vk::QueueFlagBits> &requiredQueueFlags)
+{
+	return getSuitablePhysicalDevices(instance, vk::raii::SurfaceKHR {nullptr}, possibleTypes, requiredQueueFlags);
+}
+
+std::vector<std::pair<vk::raii::PhysicalDevice, uint32_t>> getSuitablePhysicalDevices(
+	const vk::raii::Instance &instance, const vk::raii::SurfaceKHR &surface,
+	const std::vector<vk::PhysicalDeviceType> &possibleTypes, const std::vector<vk::QueueFlagBits> &requiredQueueFlags)
+{
+	auto suitablePhysicalDevices = std::vector<std::pair<vk::raii::PhysicalDevice, uint32_t>> {};
+	auto physicalDeviceIndex = uint32_t {};
+
+	for (const auto &physicalDevice : instance.enumeratePhysicalDevices())
+	{
+		if (std::find(possibleTypes.begin(), possibleTypes.end(), physicalDevice.getProperties().deviceType) !=
+			possibleTypes.end())
+		{
+			const auto queueFamilies = static_cast<bool>(*surface)
+										   ? getSuitableQueueFamilies(surface, physicalDevice, requiredQueueFlags)
+										   : getSuitableQueueFamilies(physicalDevice, requiredQueueFlags);
+
+			if (not queueFamilies.empty())
+			{
+				suitablePhysicalDevices.emplace_back(physicalDevice, physicalDeviceIndex);
+			}
+		}
+
+		++physicalDeviceIndex;
+	}
+
+	return suitablePhysicalDevices;
+}
+
+std::vector<std::pair<vk::QueueFamilyProperties, uint32_t>> getSuitableQueueFamilies(
+	const vk::raii::PhysicalDevice &physicalDevice, const std::vector<vk::QueueFlagBits> &requiredQueueFlags)
+{
+	auto queueFamilyIndex = uint32_t {};
+	auto queueFlagBits = std::deque<vk::QueueFlagBits>(requiredQueueFlags.begin(), requiredQueueFlags.end());
+	auto suitableQueueFamilies = std::vector<std::pair<vk::QueueFamilyProperties, uint32_t>> {};
+
+	for (const auto &queueFamilyProperties : physicalDevice.getQueueFamilyProperties())
+	{
+		auto foundFlags = vk::QueueFlags {};
+
+		while (not queueFlagBits.empty())
+		{
+			auto flag = queueFlagBits.front();
+
+			if (queueFamilyProperties.queueFlags & flag)
+			{
+				foundFlags |= flag;
+				queueFlagBits.pop_front();
+			}
+			else
+			{
+				break;
+			}
+		}
+
+		if (foundFlags != vk::QueueFlagBits {})
+		{
+			suitableQueueFamilies.emplace_back(queueFamilyProperties, queueFamilyIndex);
+		}
+
+		++queueFamilyIndex;
+	}
+
+	return suitableQueueFamilies;
+}
+
+std::vector<std::pair<vk::QueueFamilyProperties, uint32_t>> getSuitableQueueFamilies(
+	const vk::raii::SurfaceKHR &surface, const vk::raii::PhysicalDevice &physicalDevice,
+	const std::vector<vk::QueueFlagBits> &requiredQueueFlags)
+{
+	auto queueFamilies = getSuitableQueueFamilies(physicalDevice, requiredQueueFlags);
+
+	std::erase_if(queueFamilies, [&surface, &physicalDevice](auto &&family) {
+		return not physicalDevice.getSurfaceSupportKHR(std::get<1>(family), *surface);
+	});
+
+	return queueFamilies;
 }
 
 } // namespace dust::render::vulkan

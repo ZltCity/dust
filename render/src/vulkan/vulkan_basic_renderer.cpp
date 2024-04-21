@@ -24,10 +24,12 @@ namespace dust::render::vulkan
 //	const std::vector<vk::SurfaceFormatKHR> &availableFormats, const std::vector<vk::Format> &requiredFormats);
 
 VulkanBasicRenderer::VulkanBasicRenderer(
-	vk::raii::Device device, std::vector<SuitableQueueFamily> queueFamilies, std::shared_ptr<VulkanBackend> backend)
-	: m_backend {std::move(backend)}, m_device {std::move(device)}, m_queueFamilies {std::move(queueFamilies)}
-//	: m_device {createVulkanDevice(physicalDevice, queueFamily, queueCount, {"VK_KHR_swapchain"})},
-//	  m_commandPool {createVulkanCommandPool(m_device, queueFamily)},
+	std::pair<vk::raii::PhysicalDevice, uint32_t> physicalDevice,
+	std::shared_ptr<VulkanBackend> backend)
+	: m_backend {std::move(backend)},
+	  m_physicalDevice{std::move(physicalDevice)},
+	  m_device {std::move(device)},
+	  m_commandPools {createCommandPools(m_device, queueFamilies)}
 //	  m_commandBuffers {createVulkanCommandBuffers(m_device, m_commandPool)},
 //	  m_surfaceFormat {chooseSurfaceFormat(
 //		  physicalDevice.getSurfaceFormatsKHR(*surface), {vk::Format::eR8G8B8A8Unorm, vk::Format::eB8G8R8A8Unorm})},
@@ -91,18 +93,30 @@ VulkanBasicRenderer::VulkanBasicRenderer(
 //	m_device.waitIdle();
 //}
 
-vk::raii::CommandPool VulkanBasicRenderer::createCommandPool(const vk::raii::Device &device, uint32_t queueFamily)
+std::vector<std::pair<vk::raii::CommandPool, uint32_t>> VulkanBasicRenderer::createCommandPools(
+	const vk::raii::Device &device, const std::vector<SuitableQueueFamily> &queueFamilies)
 {
-	return vk::raii::CommandPool {
-		device, vk::CommandPoolCreateInfo {vk::CommandPoolCreateFlagBits::eResetCommandBuffer, queueFamily}};
+	auto commandPools = std::vector<CommandPool> {};
+
+	for (const auto &queueFamily : queueFamilies)
+	{
+		commandPools.emplace_back(
+			vk::raii::CommandPool {
+				device,
+				vk::CommandPoolCreateInfo {
+					vk::CommandPoolCreateFlagBits::eResetCommandBuffer, queueFamily.familyIndex}},
+			queueFamily);
+	}
+
+	return commandPools;
 }
 
-std::vector<vk::raii::CommandBuffer> VulkanBasicRenderer::createCommandBuffers(
-	const vk::raii::Device &device, const vk::raii::CommandPool &commandPool)
-{
-	return device.allocateCommandBuffers(
-		vk::CommandBufferAllocateInfo {*commandPool, vk::CommandBufferLevel::ePrimary, 1});
-}
+//std::vector<vk::raii::CommandBuffer> VulkanBasicRenderer::createCommandBuffers(
+//	const vk::raii::Device &device, const vk::raii::CommandPool &commandPool)
+//{
+//	return device.allocateCommandBuffers(
+//		vk::CommandBufferAllocateInfo {*commandPool, vk::CommandBufferLevel::ePrimary, 1});
+//}
 
 // vk::raii::SwapchainKHR createVulkanSwapchain(
 //	const vk::raii::Device &device, const vk::raii::SurfaceKHR &surface, const vk::SurfaceFormatKHR &surfaceFormat,

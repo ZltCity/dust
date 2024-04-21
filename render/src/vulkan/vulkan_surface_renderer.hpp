@@ -9,7 +9,7 @@ class VulkanSurfaceRenderer final : public VulkanBasicRenderer
 {
 public:
 	VulkanSurfaceRenderer(
-		const vk::raii::SurfaceKHR &surface, vk::raii::Device device, std::vector<SuitableQueueFamily> queueFamilies,
+		const vk::raii::SurfaceKHR &surface, std::pair<vk::raii::PhysicalDevice, uint32_t> physicalDevice,
 		std::shared_ptr<class VulkanBackend> backend);
 
 	void startFrame();

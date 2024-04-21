@@ -7,8 +7,6 @@
 
 #include <dust/render/renderer.hpp>
 
-#include "vulkan_helper_struct.hpp"
-
 namespace dust::render::vulkan
 {
 
@@ -16,21 +14,20 @@ class VulkanBasicRenderer : public Renderer, public std::enable_shared_from_this
 {
 public:
 	VulkanBasicRenderer(
-		vk::raii::Device device, std::vector<SuitableQueueFamily> queueFamilies,
+		std::pair<vk::raii::PhysicalDevice, uint32_t> physicalDevice,
 		std::shared_ptr<class VulkanBackend> backend);
 
 protected:
-	[[nodiscard]] vk::raii::CommandPool createCommandPool(const vk::raii::Device &device, uint32_t queueFamily);
-	[[nodiscard]] std::vector<vk::raii::CommandBuffer> createCommandBuffers(
-		const vk::raii::Device &device, const vk::raii::CommandPool &commandPool);
+	[[nodiscard]] static std::vector<std::pair<vk::raii::CommandPool, uint32_t>> createCommandPools(
+		const vk::raii::Device &device, const std::vector<std::pair<vk::QueueFamilyProperties, uint32_t>> &queueFamilies);
+	//	[[nodiscard]] std::vector<vk::raii::CommandBuffer> createCommandBuffers(
+	//		const vk::raii::Device &device, const vk::raii::CommandPool &commandPool);
 
 	std::shared_ptr<class VulkanBackend> m_backend;
 
+	std::pair<vk::raii::PhysicalDevice, uint32_t> m_physicalDevice;
 	vk::raii::Device m_device;
-	vk::raii::CommandPool m_commandPool;
-	std::vector<vk::raii::CommandBuffer> m_commandBuffers;
-	vk::raii::RenderPass m_renderPass;
-	std::vector<SuitableQueueFamily> m_queueFamilies;
+	std::vector<CommandPool> m_commandPools;
 
 	//	std::optional<vk::SurfaceFormatKHR> m_surfaceFormat;
 	//	std::optional<vk::SurfaceCapabilitiesKHR> m_surfaceCapabilities;

@@ -42,9 +42,6 @@ try
 				}
 			}
 		}
-
-//		renderer->startFrame();
-//		renderer->endFrame();
 	}
 
 	return 0;
