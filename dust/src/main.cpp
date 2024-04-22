@@ -43,6 +43,9 @@ try
 				}
 			}
 		}
+
+		frame->clearColor({1.f, 1.f, 1.f, 1.f});
+		frame->present();
 	}
 
 	return 0;

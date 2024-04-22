@@ -15,28 +15,40 @@ VulkanRenderer::VulkanRenderer(vk::raii::PhysicalDevice physicalDevice, std::sha
 	: m_backend {std::move(backend)},
 	  m_physicalDevice {std::move(physicalDevice)},
 	  m_device {createDevice()},
-	  m_commandPools {createCommandPools()}
+	  m_commandPools {createCommandPools()},
+	  m_swapchain {createSwapchain()}
 {}
+
+const vk::raii::PhysicalDevice &VulkanRenderer::getPhysicalDevice() const
+{
+	return m_physicalDevice;
+}
 
 const vk::raii::Device &VulkanRenderer::getDevice() const
 {
 	return m_device;
 }
 
+const std::vector<std::pair<vk::raii::CommandPool, uint32_t>> &VulkanRenderer::getCommandPools() const
+{
+	return m_commandPools;
+}
+
+const std::optional<VulkanSwapchainData> &VulkanRenderer::getSwapchain() const
+{
+	return m_swapchain;
+}
+
+bool VulkanRenderer::hasPresentSupport(uint32_t queueFamilyIndex) const
+{
+	const auto &surface = m_backend->getSurface();
+
+	return surface.has_value() and m_physicalDevice.getSurfaceSupportKHR(queueFamilyIndex, surface.value());
+}
+
 std::shared_ptr<Frame> VulkanRenderer::createFrame()
 {
-	auto swapchain = std::optional<VulkanSwapchainData> {};
-
-	if (m_backend->getSurface().has_value())
-	{
-		swapchain = std::make_optional(createSwapchain());
-	}
-
-	const auto colorAttachmentFormat =
-		swapchain.has_value() ? std::get<1>(swapchain.value()).format : vk::Format::eB8G8R8A8Unorm;
-
-	return std::make_shared<VulkanFrame>(
-		std::move(swapchain), createRenderPass(colorAttachmentFormat), shared_from_this());
+	return std::make_shared<VulkanFrame>(shared_from_this());
 }
 
 std::vector<const char *> VulkanRenderer::getRequiredDeviceExtensions() const
@@ -67,24 +79,6 @@ vk::SurfaceFormatKHR VulkanRenderer::chooseSurfaceFormat(const vk::raii::Surface
 	}
 
 	return *surfaceFormat;
-}
-
-vk::Format VulkanRenderer::chooseDepthBufferFormat() const
-{
-	const auto acceptableFormats = VulkanConfig::getInstance().getAcceptableDepthBufferFormats();
-	const auto depthBufferFormat =
-		std::find_if(acceptableFormats.begin(), acceptableFormats.end(), [this](vk::Format format) {
-			const auto formatProperties = m_physicalDevice.getFormatProperties(format);
-
-			return formatProperties.optimalTilingFeatures & vk::FormatFeatureFlagBits::eDepthStencilAttachment;
-		});
-
-	if (depthBufferFormat == acceptableFormats.end())
-	{
-		throw std::runtime_error {"Could not find suitable depth buffer format."};
-	}
-
-	return *depthBufferFormat;
 }
 
 // void VulkanBasicRenderer::startFrame()
@@ -228,45 +222,6 @@ VulkanSwapchainData VulkanRenderer::createSwapchain()
 				vk::PresentModeKHR::eFifo,
 				true}},
 		surfaceFormat, surfaceCapabilities};
-}
-
-vk::raii::RenderPass VulkanRenderer::createRenderPass(vk::Format colorAttachmentFormat)
-{
-	const auto attachments = std::array {
-		vk::AttachmentDescription {
-			{},
-			colorAttachmentFormat,
-			vk::SampleCountFlagBits::e1,
-			vk::AttachmentLoadOp::eClear,
-			vk::AttachmentStoreOp::eStore,
-			vk::AttachmentLoadOp::eDontCare,
-			vk::AttachmentStoreOp::eDontCare,
-			vk::ImageLayout::eUndefined,
-			vk::ImageLayout::ePresentSrcKHR,
-		},
-		vk::AttachmentDescription {
-			{},
-			chooseDepthBufferFormat(),
-			vk::SampleCountFlagBits::e1,
-			vk::AttachmentLoadOp::eClear,
-			vk::AttachmentStoreOp::eDontCare,
-			vk::AttachmentLoadOp::eDontCare,
-			vk::AttachmentStoreOp::eDontCare,
-			vk::ImageLayout::eUndefined,
-			vk::ImageLayout::eDepthStencilAttachmentOptimal}};
-	const auto colorAttachmentRefs = std::array {vk::AttachmentReference {0, vk::ImageLayout::eColorAttachmentOptimal}};
-	const auto depthAttachmentRef = vk::AttachmentReference {1, vk::ImageLayout::eDepthStencilAttachmentOptimal};
-	const auto subpasses = std::array {vk::SubpassDescription {
-		{}, vk::PipelineBindPoint::eGraphics, {}, colorAttachmentRefs, {}, &depthAttachmentRef}};
-	const auto subpassDependencies = std::array {vk::SubpassDependency {
-		VK_SUBPASS_EXTERNAL,
-		0,
-		vk::PipelineStageFlagBits::eColorAttachmentOutput | vk::PipelineStageFlagBits::eEarlyFragmentTests,
-		vk::PipelineStageFlagBits::eColorAttachmentOutput | vk::PipelineStageFlagBits::eEarlyFragmentTests,
-		{},
-		vk::AccessFlagBits::eColorAttachmentWrite | vk::AccessFlagBits::eDepthStencilAttachmentWrite}};
-
-	return vk::raii::RenderPass {m_device, vk::RenderPassCreateInfo {{}, attachments, subpasses, subpassDependencies}};
 }
 
 } // namespace dust::render::vulkan

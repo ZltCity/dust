@@ -14,7 +14,7 @@ public:
 
 	Renderer &operator=(const Renderer &) = delete;
 
-	virtual std::shared_ptr<Frame> createFrame() = 0;
+	[[nodiscard]] virtual std::shared_ptr<Frame> createFrame() = 0;
 };
 
 } // namespace dust::render
