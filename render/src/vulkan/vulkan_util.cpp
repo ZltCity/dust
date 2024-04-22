@@ -8,7 +8,7 @@ namespace dust::render::vulkan
 {
 
 std::vector<std::string> checkLayersAvailability(
-	const std::vector<vk::LayerProperties> &layerProperties, const std::vector<const char *> &layerNames)
+	const std::vector<vk::LayerProperties> &layerProperties, const std::vector<const char *> &requiredLayers)
 {
 	auto layersSet = std::set<std::string_view> {};
 
@@ -18,7 +18,7 @@ std::vector<std::string> checkLayersAvailability(
 
 	auto missing = std::vector<std::string> {};
 
-	for (const char *name : layerNames)
+	for (const char *name : requiredLayers)
 	{
 		if (not layersSet.contains(std::string_view {name}))
 		{
@@ -30,7 +30,8 @@ std::vector<std::string> checkLayersAvailability(
 }
 
 std::vector<std::string> checkExtensionsAvailability(
-	const std::vector<vk::ExtensionProperties> &extensionProperties, const std::vector<const char *> &extensionNames)
+	const std::vector<vk::ExtensionProperties> &extensionProperties,
+	const std::vector<const char *> &requiredExtensions)
 {
 	auto extensionsSet = std::set<std::string_view> {};
 
@@ -40,7 +41,7 @@ std::vector<std::string> checkExtensionsAvailability(
 
 	auto missing = std::vector<std::string> {};
 
-	for (const char *name : extensionNames)
+	for (const char *name : requiredExtensions)
 	{
 		if (not extensionsSet.contains(std::string_view {name}))
 		{
@@ -53,15 +54,16 @@ std::vector<std::string> checkExtensionsAvailability(
 
 std::vector<std::pair<vk::raii::PhysicalDevice, uint32_t>> getSuitablePhysicalDevices(
 	const vk::raii::Instance &instance, const std::optional<vk::raii::SurfaceKHR> &surface,
-	const std::vector<vk::PhysicalDeviceType> &possibleTypes, const std::vector<vk::QueueFlagBits> &requiredQueueFlags)
+	const std::vector<vk::PhysicalDeviceType> &acceptableTypes,
+	const std::vector<vk::QueueFlagBits> &requiredQueueFlags)
 {
 	auto suitablePhysicalDevices = std::vector<std::pair<vk::raii::PhysicalDevice, uint32_t>> {};
 	auto physicalDeviceIndex = uint32_t {};
 
 	for (const auto &physicalDevice : instance.enumeratePhysicalDevices())
 	{
-		if (std::find(possibleTypes.begin(), possibleTypes.end(), physicalDevice.getProperties().deviceType) !=
-				possibleTypes.end() and
+		if (std::find(acceptableTypes.begin(), acceptableTypes.end(), physicalDevice.getProperties().deviceType) !=
+				acceptableTypes.end() and
 			not getSuitableQueueFamilies(physicalDevice, surface, requiredQueueFlags).empty())
 		{
 			suitablePhysicalDevices.emplace_back(physicalDevice, physicalDeviceIndex);

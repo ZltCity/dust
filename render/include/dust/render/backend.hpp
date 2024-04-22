@@ -26,12 +26,9 @@ class Backend
 public:
 	Backend() = default;
 	Backend(const Backend &) = delete;
-	Backend(Backend &&) = delete;
-
 	virtual ~Backend() noexcept = 0;
 
 	Backend &operator=(const Backend &) = delete;
-	Backend &operator=(Backend &&) = delete;
 
 	[[nodiscard]] virtual std::shared_ptr<Renderer> createRenderer(const std::vector<Hint> &hints) = 0;
 

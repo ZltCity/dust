@@ -5,6 +5,7 @@
 #endif
 
 #include "vulkan_backend.hpp"
+#include "vulkan_config.hpp"
 #include "vulkan_renderer.hpp"
 #include "vulkan_util.hpp"
 
@@ -14,29 +15,21 @@ namespace dust::render::vulkan
 #if defined(WITH_SDL)
 VulkanBackend::VulkanBackend(const glue::ApplicationInfo &applicationInfo, SDL_Window *window)
 	: m_context {},
-	  m_instance {createInstance(
-		  m_context, applicationInfo, getRequiredInstanceLayers(), getRequiredInstanceExtensions(window))},
-	  m_surface {createSurface(m_instance, window)}
+	  m_instance {createInstance(applicationInfo, getRequiredInstanceLayers(), getRequiredInstanceExtensions(window))},
+	  m_surface {createSurface(window)}
 {}
 #endif
 
-std::shared_ptr<Renderer> VulkanBackend::createRenderer(const std::vector<Hint> &hints)
+const std::optional<vk::raii::SurfaceKHR> &VulkanBackend::getSurface() const
 {
-	const auto suitablePhysicalDevices =
-		getSuitablePhysicalDevices(m_instance, m_surface, possibleDeviceTypes, requiredQueueFlags);
-
-	if (suitablePhysicalDevices.empty())
-	{
-		throw std::runtime_error {"Could not find suitable physical device."};
-	}
-
-	return std::make_shared<VulkanRenderer>(choosePhysicalDevice(suitablePhysicalDevices, hints), shared_from_this());
+	return m_surface;
 }
 
 std::vector<Device> VulkanBackend::getSuitableDevices() const
 {
-	const auto suitablePhysicalDevices =
-		getSuitablePhysicalDevices(m_instance, m_surface, possibleDeviceTypes, requiredQueueFlags);
+	const auto &config = VulkanConfig::getInstance();
+	const auto suitablePhysicalDevices = getSuitablePhysicalDevices(
+		m_instance, m_surface, config.getAcceptableDeviceTypes(), config.getRequiredQueueFlags());
 	auto suitableDevices = std::vector<Device>(suitablePhysicalDevices.size());
 
 	std::transform(
@@ -48,12 +41,21 @@ std::vector<Device> VulkanBackend::getSuitableDevices() const
 	return suitableDevices;
 }
 
-const std::optional<vk::raii::SurfaceKHR> &VulkanBackend::getSurface() const
+std::shared_ptr<Renderer> VulkanBackend::createRenderer(const std::vector<Hint> &hints)
 {
-	return m_surface;
+	const auto &config = VulkanConfig::getInstance();
+	const auto suitablePhysicalDevices = getSuitablePhysicalDevices(
+		m_instance, m_surface, config.getAcceptableDeviceTypes(), config.getRequiredQueueFlags());
+
+	if (suitablePhysicalDevices.empty())
+	{
+		throw std::runtime_error {"Could not find suitable physical device."};
+	}
+
+	return std::make_shared<VulkanRenderer>(choosePhysicalDevice(suitablePhysicalDevices, hints), shared_from_this());
 }
 
-std::vector<const char *> VulkanBackend::getRequiredInstanceLayers()
+std::vector<const char *> VulkanBackend::getRequiredInstanceLayers() const
 {
 	return std::vector<const char *>
 	{
@@ -64,7 +66,7 @@ std::vector<const char *> VulkanBackend::getRequiredInstanceLayers()
 }
 
 #if defined(WITH_SDL)
-std::vector<const char *> VulkanBackend::getRequiredInstanceExtensions(SDL_Window *window)
+std::vector<const char *> VulkanBackend::getRequiredInstanceExtensions(SDL_Window *window) const
 {
 	unsigned int count = 0;
 
@@ -86,7 +88,7 @@ std::vector<const char *> VulkanBackend::getRequiredInstanceExtensions(SDL_Windo
 
 vk::raii::PhysicalDevice VulkanBackend::choosePhysicalDevice(
 	const std::vector<std::pair<vk::raii::PhysicalDevice, uint32_t>> &suitablePhysicalDevices,
-	const std::vector<Hint> &hints)
+	const std::vector<Hint> &hints) const
 {
 	const auto useDeviceHint =
 		std::find_if(hints.begin(), hints.end(), [](const Hint &hint) { return hint.name == HintName::UseDevice; });
@@ -123,8 +125,8 @@ vk::raii::PhysicalDevice VulkanBackend::choosePhysicalDevice(
 }
 
 vk::raii::Instance VulkanBackend::createInstance(
-	const vk::raii::Context &context, const glue::ApplicationInfo &applicationInfo,
-	const std::vector<const char *> &requiredLayers, const std::vector<const char *> &requiredExtensions)
+	const glue::ApplicationInfo &applicationInfo, const std::vector<const char *> &requiredLayers,
+	const std::vector<const char *> &requiredExtensions)
 {
 	const auto vulkanApplicationInfo = vk::ApplicationInfo {
 		applicationInfo.applicationName.c_str(),
@@ -134,7 +136,7 @@ vk::raii::Instance VulkanBackend::createInstance(
 		VK_API_VERSION_1_3,
 	};
 
-	if (const auto missing = checkLayersAvailability(context.enumerateInstanceLayerProperties(), requiredLayers);
+	if (const auto missing = checkLayersAvailability(m_context.enumerateInstanceLayerProperties(), requiredLayers);
 		not missing.empty())
 	{
 		throw std::runtime_error {
@@ -142,7 +144,7 @@ vk::raii::Instance VulkanBackend::createInstance(
 	}
 
 	if (const auto missing =
-			checkExtensionsAvailability(context.enumerateInstanceExtensionProperties(), requiredExtensions);
+			checkExtensionsAvailability(m_context.enumerateInstanceExtensionProperties(), requiredExtensions);
 		not missing.empty())
 	{
 		throw std::runtime_error {
@@ -150,20 +152,20 @@ vk::raii::Instance VulkanBackend::createInstance(
 	}
 
 	return vk::raii::Instance {
-		context, vk::InstanceCreateInfo {{}, &vulkanApplicationInfo, requiredLayers, requiredExtensions}};
+		m_context, vk::InstanceCreateInfo {{}, &vulkanApplicationInfo, requiredLayers, requiredExtensions}};
 }
 
 #if defined(WITH_SDL)
-vk::raii::SurfaceKHR VulkanBackend::createSurface(const vk::raii::Instance &instance, SDL_Window *window)
+vk::raii::SurfaceKHR VulkanBackend::createSurface(SDL_Window *window)
 {
 	auto surface = VkSurfaceKHR {};
 
-	if (not SDL_Vulkan_CreateSurface(window, *instance, &surface))
+	if (not SDL_Vulkan_CreateSurface(window, *m_instance, &surface))
 	{
 		throw std::runtime_error {"Could not create Vulkan surface."};
 	}
 
-	return vk::raii::SurfaceKHR {instance, surface};
+	return vk::raii::SurfaceKHR {m_instance, surface};
 }
 #endif
 

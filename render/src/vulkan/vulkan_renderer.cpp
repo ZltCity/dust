@@ -3,10 +3,10 @@
 #include <fmt/format.h>
 
 #include "vulkan_backend.hpp"
+#include "vulkan_config.hpp"
 #include "vulkan_error.hpp"
 #include "vulkan_frame.hpp"
 #include "vulkan_renderer.hpp"
-#include "vulkan_util.hpp"
 
 namespace dust::render::vulkan
 {
@@ -14,50 +14,36 @@ namespace dust::render::vulkan
 VulkanRenderer::VulkanRenderer(vk::raii::PhysicalDevice physicalDevice, std::shared_ptr<VulkanBackend> backend)
 	: m_backend {std::move(backend)},
 	  m_physicalDevice {std::move(physicalDevice)},
-	  m_device {createDevice(*m_backend, m_physicalDevice)},
-	  m_commandPools {createCommandPools(*m_backend, m_physicalDevice, m_device)}
-//	  m_commandBuffers {createVulkanCommandBuffers(m_device, m_commandPool)},
-//	  m_surfaceFormat {chooseSurfaceFormat(
-//		  physicalDevice.getSurfaceFormatsKHR(*surface), {vk::Format::eR8G8B8A8Unorm, vk::Format::eB8G8R8A8Unorm})},
-//	  m_surfaceCapabilities {physicalDevice.getSurfaceCapabilitiesKHR(*surface)},
-//	  m_swapchain {createVulkanSwapchain(m_device, surface, *m_surfaceFormat, *m_surfaceCapabilities, queueFamily)},
-//	  m_renderPass {createVulkanRenderPass(m_device, m_surfaceFormat->format)},
-//	  m_imageViews {createVulkanImageViews(m_device, *m_surfaceFormat, *m_swapchain)},
-//	  m_frameBuffers {
-//		  createVulkanFrameBuffers(m_device, m_surfaceCapabilities->currentExtent, m_renderPass, m_imageViews)},
-//	  m_imageAvailableSemaphore {m_device, vk::SemaphoreCreateInfo {}},
-//	  m_renderFence {m_device, vk::FenceCreateInfo {}},
-//	  m_renderQueue {m_device, queueFamily, 0}
+	  m_device {createDevice()},
+	  m_commandPools {createCommandPools()}
 {}
-
-std::shared_ptr<Frame> VulkanRenderer::createFrame()
-{
-	auto swapchain = std::optional<std::pair<vk::raii::SwapchainKHR, vk::SurfaceFormatKHR>> {};
-
-	if (m_backend->getSurface().has_value())
-	{
-		swapchain = std::make_optional(createSwapchain(*m_backend, m_physicalDevice, m_device, m_commandPools));
-	}
-
-	const auto colorAttachmentFormat =
-		swapchain.has_value() ? std::get<1>(swapchain.value()).format : vk::Format::eB8G8R8A8Unorm;
-
-	return std::make_shared<VulkanFrame>(
-		std::move(swapchain), createRenderPass(*m_backend, m_physicalDevice, m_device, colorAttachmentFormat),
-		shared_from_this());
-}
 
 const vk::raii::Device &VulkanRenderer::getDevice() const
 {
 	return m_device;
 }
 
-std::vector<const char *> VulkanRenderer::getRequiredDeviceExtensions(
-	const std::optional<vk::raii::SurfaceKHR> &surface)
+std::shared_ptr<Frame> VulkanRenderer::createFrame()
+{
+	auto swapchain = std::optional<VulkanSwapchainData> {};
+
+	if (m_backend->getSurface().has_value())
+	{
+		swapchain = std::make_optional(createSwapchain());
+	}
+
+	const auto colorAttachmentFormat =
+		swapchain.has_value() ? std::get<1>(swapchain.value()).format : vk::Format::eB8G8R8A8Unorm;
+
+	return std::make_shared<VulkanFrame>(
+		std::move(swapchain), createRenderPass(colorAttachmentFormat), shared_from_this());
+}
+
+std::vector<const char *> VulkanRenderer::getRequiredDeviceExtensions() const
 {
 	auto extensions = std::vector<const char *> {};
 
-	if (surface.has_value())
+	if (m_backend->getSurface().has_value())
 	{
 		extensions.push_back("VK_KHR_swapchain");
 	}
@@ -65,14 +51,15 @@ std::vector<const char *> VulkanRenderer::getRequiredDeviceExtensions(
 	return extensions;
 }
 
-vk::SurfaceFormatKHR VulkanRenderer::chooseSurfaceFormat(
-	const vk::raii::PhysicalDevice &physicalDevice, const vk::raii::SurfaceKHR &surface,
-	const std::vector<vk::Format> &possibleFormats)
+vk::SurfaceFormatKHR VulkanRenderer::chooseSurfaceFormat(const vk::raii::SurfaceKHR &surface) const
 {
-	const auto availableFormats = physicalDevice.getSurfaceFormatsKHR(*surface);
+	const auto availableFormats = m_physicalDevice.getSurfaceFormatsKHR(*surface);
+	const auto acceptableFormats = VulkanConfig::getInstance().getAcceptableSurfaceFormats();
 	const auto surfaceFormat = std::find_first_of(
-		availableFormats.begin(), availableFormats.end(), possibleFormats.begin(), possibleFormats.end(),
-		[](const vk::SurfaceFormatKHR &available, const vk::Format &possible) { return available.format == possible; });
+		availableFormats.begin(), availableFormats.end(), acceptableFormats.begin(), acceptableFormats.end(),
+		[](const vk::SurfaceFormatKHR &available, const vk::Format &acceptable) {
+			return available.format == acceptable;
+		});
 
 	if (surfaceFormat == availableFormats.end())
 	{
@@ -82,17 +69,17 @@ vk::SurfaceFormatKHR VulkanRenderer::chooseSurfaceFormat(
 	return *surfaceFormat;
 }
 
-vk::Format VulkanRenderer::chooseDepthBufferFormat(
-	const vk::raii::PhysicalDevice &physicalDevice, const std::vector<vk::Format> &possibleFormats)
+vk::Format VulkanRenderer::chooseDepthBufferFormat() const
 {
+	const auto acceptableFormats = VulkanConfig::getInstance().getAcceptableDepthBufferFormats();
 	const auto depthBufferFormat =
-		std::find_if(possibleFormats.begin(), possibleFormats.end(), [&physicalDevice](vk::Format format) {
-			const auto formatProperties = physicalDevice.getFormatProperties(format);
+		std::find_if(acceptableFormats.begin(), acceptableFormats.end(), [this](vk::Format format) {
+			const auto formatProperties = m_physicalDevice.getFormatProperties(format);
 
 			return formatProperties.optimalTilingFeatures & vk::FormatFeatureFlagBits::eDepthStencilAttachment;
 		});
 
-	if (depthBufferFormat == possibleFormats.end())
+	if (depthBufferFormat == acceptableFormats.end())
 	{
 		throw std::runtime_error {"Could not find suitable depth buffer format."};
 	}
@@ -149,13 +136,12 @@ vk::Format VulkanRenderer::chooseDepthBufferFormat(
 //	m_device.waitIdle();
 //}
 
-vk::raii::Device VulkanRenderer::createDevice(
-	const VulkanBackend &backend, const vk::raii::PhysicalDevice &physicalDevice)
+vk::raii::Device VulkanRenderer::createDevice()
 {
-	const auto requiredExtensions = getRequiredDeviceExtensions(backend.getSurface());
+	const auto requiredExtensions = getRequiredDeviceExtensions();
 
 	if (const auto missing =
-			checkExtensionsAvailability(physicalDevice.enumerateDeviceExtensionProperties(), requiredExtensions);
+			checkExtensionsAvailability(m_physicalDevice.enumerateDeviceExtensionProperties(), requiredExtensions);
 		not missing.empty())
 	{
 		throw std::runtime_error {
@@ -165,27 +151,26 @@ vk::raii::Device VulkanRenderer::createDevice(
 	auto queueCreateInfos = std::vector<vk::DeviceQueueCreateInfo> {};
 	auto queuePriorities = std::vector<std::vector<float>> {};
 
-	for (const auto &[props, index] :
-		 getSuitableQueueFamilies(physicalDevice, backend.getSurface(), backend.requiredQueueFlags))
+	for (const auto &[props, index] : getSuitableQueueFamilies(
+			 m_physicalDevice, m_backend->getSurface(), VulkanConfig::getInstance().getRequiredQueueFlags()))
 	{
 		queueCreateInfos.emplace_back(
 			vk::DeviceQueueCreateFlags {}, index, queuePriorities.emplace_back(props.queueCount, 1.0f));
 	}
 
-	return vk::raii::Device {physicalDevice, vk::DeviceCreateInfo {{}, queueCreateInfos, {}, requiredExtensions}};
+	return vk::raii::Device {m_physicalDevice, vk::DeviceCreateInfo {{}, queueCreateInfos, {}, requiredExtensions}};
 }
 
-std::vector<std::pair<vk::raii::CommandPool, uint32_t>> VulkanRenderer::createCommandPools(
-	const VulkanBackend &backend, const vk::raii::PhysicalDevice &physicalDevice, const vk::raii::Device &device)
+std::vector<std::pair<vk::raii::CommandPool, uint32_t>> VulkanRenderer::createCommandPools()
 {
 	auto commandPools = std::vector<std::pair<vk::raii::CommandPool, uint32_t>> {};
 
-	for (const auto &[queueFamilyProperties, queueFamilyIndex] :
-		 getSuitableQueueFamilies(physicalDevice, backend.getSurface(), backend.requiredQueueFlags))
+	for (const auto &[queueFamilyProperties, queueFamilyIndex] : getSuitableQueueFamilies(
+			 m_physicalDevice, m_backend->getSurface(), VulkanConfig::getInstance().getRequiredQueueFlags()))
 	{
 		commandPools.emplace_back(
 			vk::raii::CommandPool {
-				device,
+				m_device,
 				vk::CommandPoolCreateInfo {vk::CommandPoolCreateFlagBits::eResetCommandBuffer, queueFamilyIndex}},
 			queueFamilyIndex);
 	}
@@ -200,35 +185,33 @@ std::vector<std::pair<vk::raii::CommandPool, uint32_t>> VulkanRenderer::createCo
 //		vk::CommandBufferAllocateInfo {*commandPool, vk::CommandBufferLevel::ePrimary, 1});
 // }
 
-std::pair<vk::raii::SwapchainKHR, vk::SurfaceFormatKHR> VulkanRenderer::createSwapchain(
-	const VulkanBackend &backend, const vk::raii::PhysicalDevice &physicalDevice, const vk::raii::Device &device,
-	const std::vector<std::pair<vk::raii::CommandPool, uint32_t>> &commandPools)
+VulkanSwapchainData VulkanRenderer::createSwapchain()
 {
-	const auto &surface = backend.getSurface();
+	const auto &surface = m_backend->getSurface();
 
 	if (not surface.has_value())
 	{
 		throw NoValidSurface {};
 	}
 
-	const auto surfaceFormat = chooseSurfaceFormat(physicalDevice, surface.value(), backend.possibleSurfaceFormats);
-	const auto queueFamilyProperties = physicalDevice.getQueueFamilyProperties();
+	const auto surfaceFormat = chooseSurfaceFormat(surface.value());
+	const auto queueFamilyProperties = m_physicalDevice.getQueueFamilyProperties();
 	auto queueFamilyIndices = std::vector<uint32_t> {};
 
-	for (const auto &[commandPool, queueFamilyIndex] : commandPools)
+	for (const auto &[commandPool, queueFamilyIndex] : m_commandPools)
 	{
 		if ((queueFamilyProperties.at(queueFamilyIndex).queueFlags & vk::QueueFlagBits::eGraphics) and
-			physicalDevice.getSurfaceSupportKHR(queueFamilyIndex, *(surface.value())))
+			m_physicalDevice.getSurfaceSupportKHR(queueFamilyIndex, *(surface.value())))
 		{
 			queueFamilyIndices.push_back(queueFamilyIndex);
 		}
 	}
 
-	const auto surfaceCapabilities = physicalDevice.getSurfaceCapabilitiesKHR(*(surface.value()));
+	const auto surfaceCapabilities = m_physicalDevice.getSurfaceCapabilitiesKHR(*(surface.value()));
 
 	return {
 		vk::raii::SwapchainKHR {
-			device,
+			m_device,
 			vk::SwapchainCreateInfoKHR {
 				{},
 				*(surface.value()),
@@ -244,12 +227,10 @@ std::pair<vk::raii::SwapchainKHR, vk::SurfaceFormatKHR> VulkanRenderer::createSw
 				vk::CompositeAlphaFlagBitsKHR::eOpaque,
 				vk::PresentModeKHR::eFifo,
 				true}},
-		surfaceFormat};
+		surfaceFormat, surfaceCapabilities};
 }
 
-vk::raii::RenderPass VulkanRenderer::createRenderPass(
-	const VulkanBackend &backend, const vk::raii::PhysicalDevice &physicalDevice, const vk::raii::Device &device,
-	vk::Format colorAttachmentFormat)
+vk::raii::RenderPass VulkanRenderer::createRenderPass(vk::Format colorAttachmentFormat)
 {
 	const auto attachments = std::array {
 		vk::AttachmentDescription {
@@ -265,7 +246,7 @@ vk::raii::RenderPass VulkanRenderer::createRenderPass(
 		},
 		vk::AttachmentDescription {
 			{},
-			chooseDepthBufferFormat(physicalDevice, backend.possibleDepthBufferFormats),
+			chooseDepthBufferFormat(),
 			vk::SampleCountFlagBits::e1,
 			vk::AttachmentLoadOp::eClear,
 			vk::AttachmentStoreOp::eDontCare,
@@ -285,51 +266,7 @@ vk::raii::RenderPass VulkanRenderer::createRenderPass(
 		{},
 		vk::AccessFlagBits::eColorAttachmentWrite | vk::AccessFlagBits::eDepthStencilAttachmentWrite}};
 
-	return vk::raii::RenderPass {device, vk::RenderPassCreateInfo {{}, attachments, subpasses, subpassDependencies}};
+	return vk::raii::RenderPass {m_device, vk::RenderPassCreateInfo {{}, attachments, subpasses, subpassDependencies}};
 }
-
-// std::vector<vk::raii::ImageView> createVulkanImageViews(
-//	const vk::raii::Device &device, const vk::SurfaceFormatKHR &surfaceFormat, const vk::raii::SwapchainKHR &swapchain)
-//{
-//	auto imageViews = std::vector<vk::raii::ImageView> {};
-//
-//	for (const auto &image : swapchain.getImages())
-//	{
-//		imageViews.emplace_back(
-//			device, vk::ImageViewCreateInfo {
-//						{},
-//						image,
-//						vk::ImageViewType::e2D,
-//						surfaceFormat.format,
-//						{},
-//						vk::ImageSubresourceRange {vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1}});
-//	}
-//
-//	return imageViews;
-// }
-//
-// std::vector<vk::raii::Framebuffer> createVulkanFrameBuffers(
-//	const vk::raii::Device &device, const vk::Extent2D &imageExtent, const vk::raii::RenderPass &renderPass,
-//	const std::vector<vk::raii::ImageView> &imageViews)
-//{
-//	auto frameBuffers = std::vector<vk::raii::Framebuffer> {};
-//
-//	for (const auto &imageView : imageViews)
-//	{
-//		const auto attachments = std::array {*imageView};
-//
-//		frameBuffers.emplace_back(
-//			device, vk::FramebufferCreateInfo {
-//						{},
-//						*renderPass,
-//						attachments,
-//						imageExtent.width,
-//						imageExtent.height,
-//						1,
-//					});
-//	}
-//
-//	return frameBuffers;
-// }
 
 } // namespace dust::render::vulkan
