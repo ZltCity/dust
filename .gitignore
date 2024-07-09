@@ -1,2 +1,6 @@
 .idea/
+.cxx/
+.gradle/
 build/
+downloads/
+android/local.properties

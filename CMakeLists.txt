@@ -1,15 +1,17 @@
-cmake_minimum_required(VERSION 3.22)
+cmake_minimum_required(VERSION 3.27)
 
 project(Dust)
 
 include(FetchContent)
 
-if (MSVC)
-	add_compile_options(/W4)
+if (BUILD_SHARED_LIBS)
+	set(DUST_LIB_TYPE SHARED)
+	set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 else ()
-	add_compile_options(-Wall -Wextra -Wpedantic)
+	set(DUST_LIB_TYPE STATIC)
 endif ()
 
 add_subdirectory(3rdparty)
-add_subdirectory(dust)
-add_subdirectory(render)
+add_subdirectory(desktop)
+add_subdirectory(editor)
+add_subdirectory(libs)
