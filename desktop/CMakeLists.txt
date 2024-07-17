@@ -7,4 +7,4 @@ set_target_properties(dust-desktop PROPERTIES
 
 target_link_libraries(dust-desktop PRIVATE
 	dust::game
-	dust::backend::sdl)
+	dust::sdl)

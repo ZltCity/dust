@@ -11,5 +11,6 @@ int main(int argc, const char **argv)
 	auto &sdl = sdl::Lib::instance();
 
 	return GameLoop().start(
-		std::make_shared<sdl::EventPoller>(), std::make_shared<sdl::Window>("Dust", std::make_tuple(1280, 720), false));
+		std::make_shared<sdl::EventPoller>(),
+		std::make_shared<sdl::Window>("Dust Game", std::make_tuple(1280, 720)));
 }

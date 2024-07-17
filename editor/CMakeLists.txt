@@ -1,4 +1,5 @@
 add_executable(dust-editor
+	src/config.cpp
 	src/main.cpp)
 
 set_target_properties(dust-editor PROPERTIES
@@ -6,5 +7,10 @@ set_target_properties(dust-editor PROPERTIES
 	CXX_STANDARD_REQUIRED ON)
 
 target_link_libraries(dust-editor PRIVATE
-	SDL2::SDL2
-	SDL2::SDL2main)
+	dust::gles3
+	dust::imgui
+	dust::logging
+	dust::storage
+	fmt::fmt
+	glm::glm
+	nlohmann_json::nlohmann_json)

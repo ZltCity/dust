@@ -25,7 +25,7 @@ int GameLoop::start(std::shared_ptr<platform::EventPoller> eventPoller, std::sha
 		renderingContext.makeCurrent();
 		glClearColor(0.5f, 0.6f, 0.55f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT);
-		renderingContext.preset();
+		renderingContext.swapBuffers();
 	}
 
 	return 0;

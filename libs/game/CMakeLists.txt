@@ -10,4 +10,4 @@ target_include_directories(dust-game PUBLIC
 	${CMAKE_CURRENT_SOURCE_DIR}/include)
 
 target_link_libraries(dust-game PUBLIC
-	dust::render)
+	dust::gles3)

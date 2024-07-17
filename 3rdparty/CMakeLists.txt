@@ -1,5 +1,6 @@
 add_subdirectory(dear_imgui)
 add_subdirectory(format)
+add_subdirectory(freetype)
 add_subdirectory(glm)
 add_subdirectory(json)
 
