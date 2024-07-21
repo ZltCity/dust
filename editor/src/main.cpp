@@ -5,7 +5,9 @@
 
 #include <GLES3/gl32.h>
 
+#include <dust/gles3/buffer.hpp>
 #include <dust/gles3/rendering_context.hpp>
+#include <dust/gles3/shader_program.hpp>
 #include <dust/imgui/imgui.hpp>
 #include <dust/logging/log.hpp>
 #include <dust/sdl/sdl.hpp>
@@ -14,38 +16,34 @@
 #include "config.hpp"
 
 constexpr auto configPath = "./config.json";
+constexpr auto logPath = "./log";
 
+void initLogFile(dust::storage::FileManager &fileManager);
 void gles3DebugCallback(
 	GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar *message,
-	const void *userParam)
-{
-	using namespace dust::logging;
-
-	Log::debug(message);
-}
+	const void *userParam);
 
 int main(int argc, const char **argv)
 {
 	using namespace dust;
 	using dust::logging::Log;
 
-	Log::instance().writer(
-		"logfile", [logfile = std::make_shared<std::ofstream>("./log", std::ios_base::app)](
-					   const std::string &message) { *logfile << message; });
+	auto fileManager = storage::FileManager::create();
+
+	initLogFile(*fileManager);
+
 	Log::info("Start Dust Game Editor..");
 
-	auto &sdl = sdl::Lib::instance();
-	auto &imgui = imgui::Lib::instance();
-
-	auto fileManager = storage::FileManager::create();
 	auto config = editor::loadConfig(*fileManager->file(configPath, storage::StorageType::Local));
-
+	auto &sdl = sdl::Lib::instance();
 	auto window = std::make_shared<sdl::Window>(
 		"Dust Game Editor", std::make_tuple(1280, 720), SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE);
 	auto renderingContext = dust::gles3::RenderingContext(window, config.gles3.debugContext);
 	auto quit = false;
 
 	renderingContext.makeCurrent();
+
+	auto &imgui = imgui::Lib::instance();
 
 	imgui.config(ImGuiConfigFlags_NavEnableKeyboard | ImGuiConfigFlags_NavEnableGamepad);
 	imgui.initContext(window);
@@ -77,7 +75,7 @@ int main(int argc, const char **argv)
 		}
 
 		glClearColor(clearColor.r, clearColor.g, clearColor.b, clearColor.a);
-		glClear(GL_COLOR_BUFFER_BIT);
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 		imgui.beginFrame();
 
@@ -108,4 +106,27 @@ int main(int argc, const char **argv)
 	editor::saveConfig(config, *fileManager->file(configPath, storage::StorageType::Local));
 
 	return 0;
+}
+
+void initLogFile(dust::storage::FileManager &fileManager)
+{
+	using namespace dust;
+	using dust::logging::Log;
+
+	const auto sharedStream = std::shared_ptr<std::ostream>(
+		fileManager.file(logPath, storage::StorageType::Local)->stream(storage::StreamFlags::Append));
+
+	Log::instance().writer("logfile", [stream = sharedStream](const std::string &message) {
+		*stream << message;
+		stream->flush();
+	});
+}
+
+void gles3DebugCallback(
+	GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar *message,
+	const void *userParam)
+{
+	using namespace dust::logging;
+
+	Log::debug(message);
 }

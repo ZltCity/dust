@@ -5,7 +5,10 @@ add_library(dust-gles3 ${DUST_LIB_TYPE}
 	src/egl/display.cpp
 	src/egl/error.cpp
 	src/egl/surface.cpp
-	src/rendering_context.cpp)
+	src/buffer.cpp
+	src/rendering_context.cpp
+	src/shader.cpp
+	src/shader_program.cpp)
 add_library(dust::gles3 ALIAS dust-gles3)
 
 set_target_properties(dust-gles3 PROPERTIES

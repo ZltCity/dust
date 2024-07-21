@@ -2,6 +2,7 @@
 .cxx/
 .gradle/
 build/
+install/
 downloads/
 android/local.properties
 *.ini

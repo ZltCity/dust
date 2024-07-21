@@ -15,3 +15,5 @@ add_subdirectory(3rdparty)
 add_subdirectory(desktop)
 add_subdirectory(editor)
 add_subdirectory(libs)
+
+install(TARGETS dust-desktop dust-editor)

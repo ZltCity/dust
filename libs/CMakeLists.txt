@@ -3,6 +3,17 @@ add_subdirectory(game)
 add_subdirectory(gles3)
 add_subdirectory(imgui)
 add_subdirectory(logging)
+add_subdirectory(scene)
 add_subdirectory(sdl)
 add_subdirectory(storage)
 add_subdirectory(threading)
+
+install(TARGETS
+	dust-game
+	dust-gles3
+	dust-imgui
+	dust-logging
+	dust-scene
+	dust-sdl
+	dust-storage
+	dust-threading)

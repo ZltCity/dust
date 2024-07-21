@@ -10,6 +10,7 @@ target_link_libraries(dust-editor PRIVATE
 	dust::gles3
 	dust::imgui
 	dust::logging
+	dust::scene
 	dust::storage
 	fmt::fmt
 	glm::glm

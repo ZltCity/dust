@@ -18,7 +18,11 @@ std::unique_ptr<std::iostream> DesktopFile::stream(StreamFlags flags)
 {
 	auto openMode = std::ios_base::binary | std::ios_base::in | std::ios_base::out;
 
-	if ((flags & StreamFlags::Truncate) == StreamFlags::Truncate)
+	if ((flags & StreamFlags::Append) == StreamFlags::Append)
+	{
+		openMode |= std::ios_base::app;
+	}
+	else if ((flags & StreamFlags::Truncate) == StreamFlags::Truncate)
 	{
 		openMode |= std::ios_base::trunc;
 	}

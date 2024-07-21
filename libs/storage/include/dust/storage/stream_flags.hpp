@@ -13,7 +13,8 @@ namespace storage
 enum class StreamFlags : uint32_t
 {
 	Default = 0x00000000,
-	Truncate = 0x00000001
+	Append = 0x00000001,
+	Truncate = 0x00000002
 };
 
 } // namespace storage

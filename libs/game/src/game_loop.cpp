@@ -1,22 +1,23 @@
 #include <GLES3/gl32.h>
 
 #include <dust/game/game_loop.hpp>
+#include <dust/gles3/rendering_context.hpp>
 
 namespace dust::game
 {
 
-int GameLoop::start(std::shared_ptr<platform::EventPoller> eventPoller, std::shared_ptr<platform::Window> window)
+int GameLoop::start(std::shared_ptr<sdl::Window> window)
 {
 	auto renderingContext = gles3::RenderingContext(window);
 	auto quit = false;
 
 	while (not quit)
 	{
-		auto event = std::optional<platform::Event>(std::nullopt);
+		auto event = SDL_Event {};
 
-		while ((event = eventPoller->nextEvent()).has_value())
+		while (SDL_PollEvent(&event))
 		{
-			if (event->type == platform::Event::Type::Quit)
+			if (event.type == SDL_QUIT)
 			{
 				quit = true;
 			}

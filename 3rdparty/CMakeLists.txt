@@ -9,3 +9,8 @@ if (NOT DUST_BUILD_ANDROID)
 endif ()
 
 add_subdirectory(stb_image)
+
+install(TARGETS
+	dear_imgui
+	SDL2
+	SDL2main)
