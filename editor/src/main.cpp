@@ -1,6 +1,7 @@
 #include <fstream>
 #include <iostream>
 
+#include <fmt/format.h>
 #include <glm/glm.hpp>
 
 #include <GLES3/gl32.h>
@@ -10,6 +11,7 @@
 #include <dust/gles3/shader_program.hpp>
 #include <dust/imgui/imgui.hpp>
 #include <dust/logging/log.hpp>
+#include <dust/scene/scene.hpp>
 #include <dust/sdl/sdl.hpp>
 #include <dust/storage/file_manager.hpp>
 
@@ -55,6 +57,24 @@ int main(int argc, const char **argv)
 
 	auto clearColor = glm::vec4(0.7f, 0.7f, 0.7f, 1.0f);
 
+	struct
+	{
+		bool showSkyboxProperties = false;
+	} uiState;
+
+	struct
+	{
+		struct
+		{
+			std::filesystem::path vertexShader, fragmentShader, leftImage, rightImage, nearImage, farImage, bottomImage,
+				topImage;
+		} skyboxProperties;
+
+		bool drawSkybox = true;
+	} sceneState;
+
+	std::unique_ptr<scene::Scene> scene;
+
 	if (config.gles3.debugContext)
 	{
 		glDebugMessageCallback(gles3DebugCallback, nullptr);
@@ -83,9 +103,9 @@ int main(int argc, const char **argv)
 		{
 			if (ImGui::BeginMenu("File"))
 			{
-				if (ImGui::MenuItem("Open")) {}
-
-				ImGui::Separator();
+				//				if (ImGui::MenuItem("Open")) {}
+				//
+				//				ImGui::Separator();
 
 				if (ImGui::MenuItem("Quit"))
 				{
@@ -94,11 +114,50 @@ int main(int argc, const char **argv)
 
 				ImGui::EndMenu();
 			}
+
+			if (ImGui::BeginMenu("Scene"))
+			{
+				if (ImGui::MenuItem("New"))
+				{
+					scene = std::make_unique<scene::Scene>();
+				}
+
+				ImGui::Separator();
+
+				if (ImGui::MenuItem("Save")) {}
+				if (ImGui::MenuItem("Load")) {}
+
+				ImGui::EndMenu();
+			}
+
+			if (ImGui::BeginMenu("View"))
+			{
+				if (ImGui::MenuItem("Show skybox properties", nullptr, &uiState.showSkyboxProperties)) {}
+
+				ImGui::EndMenu();
+			}
 			ImGui::EndMainMenuBar();
+		}
+
+		if (uiState.showSkyboxProperties)
+		{
+			if (ImGui::Begin("Skybox Properties", &uiState.showSkyboxProperties))
+			{
+				if (ImGui::Checkbox("Draw skybox", &sceneState.drawSkybox)) {}
+
+				ImGui::Text("%s", sceneState.skyboxProperties.leftImage.c_str());
+			}
+
+			ImGui::End();
 		}
 
 		imgui.endFrame();
 		imgui.present();
+
+		if (scene)
+		{
+			scene->present(sceneState.drawSkybox);
+		}
 
 		renderingContext.swapBuffers();
 	}
