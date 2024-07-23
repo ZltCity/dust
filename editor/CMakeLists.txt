@@ -1,5 +1,6 @@
 add_executable(dust-editor
 	src/config.cpp
+	src/editor.cpp
 	src/main.cpp)
 
 set_target_properties(dust-editor PROPERTIES
