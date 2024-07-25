@@ -1,8 +1,8 @@
 #pragma once
 
-#include <nlohmann/json.hpp>
+#include <filesystem>
 
-#include <dust/storage/file.hpp>
+#include <nlohmann/json.hpp>
 
 namespace dust::editor
 {
@@ -19,7 +19,7 @@ struct Config
 	NLOHMANN_DEFINE_TYPE_INTRUSIVE_WITH_DEFAULT(Config, gles3)
 };
 
-[[nodiscard]] Config loadConfig(const storage::File &file);
-void saveConfig(const Config &config, storage::File &file);
+[[nodiscard]] Config loadConfig(const std::filesystem::path &path);
+void saveConfig(const Config &config, const std::filesystem::path &path);
 
 } // namespace dust::editor

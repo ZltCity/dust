@@ -1,7 +1,8 @@
 add_executable(dust-editor
 	src/config.cpp
 	src/editor.cpp
-	src/main.cpp)
+	src/main.cpp
+	src/util.cpp)
 
 set_target_properties(dust-editor PROPERTIES
 	CXX_STANDARD 23
@@ -12,7 +13,6 @@ target_link_libraries(dust-editor PRIVATE
 	dust::imgui
 	dust::logging
 	dust::scene
-	dust::storage
 	fmt::fmt
 	glm::glm
 	nlohmann_json::nlohmann_json)

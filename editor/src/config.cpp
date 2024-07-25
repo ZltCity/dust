@@ -1,14 +1,15 @@
 #include <dust/logging/log.hpp>
 
 #include "config.hpp"
+#include "util.hpp"
 
 namespace dust::editor
 {
 
-Config loadConfig(const storage::File &file)
+Config loadConfig(const std::filesystem::path &path)
 try
 {
-	return nlohmann::json::parse(*file.stream()).get<Config>();
+	return nlohmann::json::parse(openStream(path, std::ios_base::binary | std::ios_base::in)).get<Config>();
 }
 catch (const std::exception &ex)
 {
@@ -18,12 +19,13 @@ catch (const std::exception &ex)
 	return Config {};
 }
 
-void saveConfig(const Config &config, storage::File &file)
+void saveConfig(const Config &config, const std::filesystem::path &path)
 try
 {
 	const auto dump = nlohmann::json(config).dump(2);
 
-	file.stream(storage::StreamFlags::Truncate)->write(dump.c_str(), static_cast<std::streamsize>(dump.size()));
+	openStream(path, std::ios_base::binary | std::ios_base::out)
+		.write(dump.c_str(), static_cast<std::streamsize>(dump.size()));
 }
 catch (const std::exception &ex)
 {

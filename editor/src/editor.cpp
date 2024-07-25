@@ -1,17 +1,20 @@
+#include <stack>
+
 #include <fmt/format.h>
+#include <fmt/ranges.h>
 
 #include <dust/gles3/rendering_context.hpp>
-#include <dust/imgui/imgui.hpp>
 #include <dust/logging/log.hpp>
 #include <dust/sdl/sdl.hpp>
 #include <dust/sdl/window.hpp>
 
 #include "editor.hpp"
+#include "util.hpp"
 
 namespace dust::editor
 {
 
-Editor::Editor() : m_clearColor(0.65f, 0.65f, 0.7f, 1.0f), m_fileManager(storage::FileManager::create())
+Editor::Editor() : m_clearColor(0.65f, 0.65f, 0.7f, 1.0f)
 {
 	initLogFile();
 }
@@ -22,7 +25,7 @@ void Editor::run()
 
 	Log::info("Start Dust Game Editor..");
 
-	m_config = loadConfig(*m_fileManager->file(configPath, storage::StorageType::Local));
+	m_config = loadConfig(configPath);
 
 	auto &sdl = sdl::Lib::instance();
 	auto window = std::make_shared<sdl::Window>(
@@ -36,10 +39,10 @@ void Editor::run()
 	imgui.config(ImGuiConfigFlags_NavEnableKeyboard | ImGuiConfigFlags_NavEnableGamepad);
 	imgui.initContext(window);
 
-	//	ImGui::StyleColorsDark();
+	// ImGui::StyleColorsDark();
 	ImGui::StyleColorsLight();
 
-	imgui.loadFont("assets/fonts/IBMPlexMono-Regular.ttf", 18.0f);
+	defaultFont = imgui.loadFont("assets/fonts/IBMPlexMono-Regular.ttf", defaultFontSize);
 
 	if (m_config.gles3.debugContext)
 	{
@@ -88,7 +91,7 @@ void Editor::run()
 		renderingContext.swapBuffers();
 	}
 
-	editor::saveConfig(m_config, *m_fileManager->file(configPath, storage::StorageType::Local));
+	editor::saveConfig(m_config, configPath);
 }
 
 void Editor::drawMainMenu()
@@ -156,12 +159,13 @@ void Editor::drawBrushEditor()
 		{
 			for (const auto &shader : selectedBrush().shaders)
 			{
-				if (ImGui::Selectable(shader.sourcePath.generic_string().c_str())) {}
+				if (ImGui::Selectable(shader.sourcePath.lexically_normal().c_str())) {}
 			}
 
 			if (ImGui::Button("Add new"))
 			{
-				openFileDialog.show = true;
+				raiseOpenFileDialog(
+					"./", std::set<std::string>(shaderFileExtensions.begin(), shaderFileExtensions.end()));
 			}
 		}
 	}
@@ -169,18 +173,87 @@ void Editor::drawBrushEditor()
 	ImGui::End();
 }
 
+void Editor::drawDirectoryTree(const DirectoryTreeNode &node)
+{
+	if (ImGui::TreeNodeEx(
+			node.path.lexically_normal().c_str(),
+			node.content.empty() ? ImGuiTreeNodeFlags_None : ImGuiTreeNodeFlags_DefaultOpen))
+	{
+		for (const auto &dirEntry : node.content)
+		{
+			if (not node.children.contains(dirEntry.path()))
+			{
+				if (ImGui::TreeNode(dirEntry.path().lexically_normal().c_str()))
+				{
+					ImGui::TreePop();
+				}
+			}
+			else
+			{
+				drawDirectoryTree(node.children.at(dirEntry.path()));
+			}
+		}
+		ImGui::TreePop();
+	}
+}
+
+
 void Editor::drawOpenFileDialog()
 {
 	ImGui::OpenPopup("Open file");
 
 	if (ImGui::BeginPopupModal("Open file", &openFileDialog.show))
 	{
-		ImGui::Text("Hello dsjfhds fhjs hfj dshfj hds");
-		if (ImGui::Button("Close"))
+		static auto buffer = openFileDialog.directory.lexically_normal().generic_string();
+
+		buffer.resize(256, '\0');
+
+		if (ImGui::InputText("##openFileDialog.directoryInput", buffer.data(), buffer.size())) {}
+
+		ImGui::SameLine();
+
+		if (ImGui::Button("..."))
 		{
-			ImGui::CloseCurrentPopup();
-			openFileDialog.show = false;
+			ImGui::OpenPopup("Directory content");
 		}
+
+		if (ImGui::BeginChild("##directoryTree"))
+		{
+			drawDirectoryTree(openFileDialog.directoryTree);
+
+			ImGui::EndChild();
+		}
+
+		if (not openFileDialog.extensions.empty())
+		{
+			ImGui::Text("Files:");
+			ImGui::SameLine();
+			ImGui::Text("%s", fmt::format("{}", fmt::join(openFileDialog.extensions, ", ")).c_str());
+		}
+
+		const auto pos = ImGui::GetWindowPos();
+		//		const auto size = ImGui::GetWindowSize();
+
+		ImGui::SetNextWindowPos(ImVec2(pos.x + 16.f, pos.y + ImGui::GetTextLineHeightWithSpacing() * 3.f));
+		//		ImGui::SetNextWindowSize(ImVec2(size.x * .65f, size.y * .8f));
+		//		logging::Log::info(openFileDialog.directory.root_directory());
+
+		if (ImGui::BeginPopup("Directory content"))
+		{
+			auto dirView = std::views::filter(
+				openFileDialog.directoryContent, [this](const std::filesystem::directory_entry &entry) {
+					return entry.is_directory() or openFileDialog.extensions.empty() or
+						   openFileDialog.extensions.contains(entry.path().extension());
+				});
+
+			for (const auto &dirEntry : dirView)
+			{
+				ImGui::Selectable(std::filesystem::absolute(dirEntry.path()).lexically_normal().c_str());
+			}
+
+			ImGui::EndPopup();
+		}
+
 		ImGui::EndPopup();
 	}
 }
@@ -207,14 +280,34 @@ reflections::Brush &Editor::selectedBrush()
 	return brushList.brushes.at(brushList.selectedBrush);
 }
 
+void Editor::raiseOpenFileDialog(const std::filesystem::path &directory, std::set<std::string> extensions)
+{
+	openFileDialog.directory = std::filesystem::absolute(directory);
+	openFileDialog.extensions = std::move(extensions);
+	openFileDialog.directoryContent = getDirectoryContent(directory);
+	openFileDialog.directoryTree = DirectoryTreeNode::buildDirectoryTree(directory);
+	openFileDialog.show = true;
+}
+
+std::vector<std::filesystem::directory_entry> Editor::getDirectoryContent(const std::filesystem::path &path)
+{
+	if (not is_directory(path))
+	{
+		return {};
+	}
+
+	auto it = std::filesystem::directory_iterator(path);
+
+	return {std::filesystem::begin(it), std::filesystem::end(it)};
+}
+
 void Editor::initLogFile()
 {
 	using dust::logging::Log;
 
-	const auto sharedStream = std::shared_ptr<std::ostream>(
-		m_fileManager->file(logPath, storage::StorageType::Local)->stream(storage::StreamFlags::Append));
+	auto stream = std::make_shared<std::fstream>(openStream(logPath, std::ios_base::out | std::ios_base::app));
 
-	Log::instance().writer("logfile", [stream = sharedStream](const std::string &message) {
+	Log::instance().writer("logfile", [stream](const std::string &message) {
 		*stream << message;
 		stream->flush();
 	});
@@ -227,6 +320,41 @@ void Editor::gles3DebugCallback(
 	using dust::logging::Log;
 
 	Log::debug(message);
+}
+
+auto Editor::DirectoryTreeNode::buildDirectoryTree(const std::filesystem::path &terminalPath) -> DirectoryTreeNode
+{
+	auto stack = std::stack<DirectoryTreeNode> {};
+	auto childPath = std::filesystem::absolute(terminalPath);
+	auto parentPath = childPath.parent_path();
+
+	while (parentPath != childPath)
+	{
+		stack.emplace(
+			parentPath, getDirectoryContent(parentPath), std::map<std::filesystem::path, DirectoryTreeNode> {});
+
+		childPath = parentPath;
+		parentPath = childPath.parent_path();
+	}
+
+	auto rootNode = DirectoryTreeNode {};
+	DirectoryTreeNode *nodePtr = &rootNode;
+
+	while (not stack.empty())
+	{
+		*nodePtr = std::move(stack.top());
+		stack.pop();
+
+		if (not stack.empty())
+		{
+			const auto &child = stack.top();
+			const auto [it, status] = nodePtr->children.insert(std::make_pair(child.path, child));
+
+			nodePtr = &it->second;
+		}
+	}
+
+	return rootNode;
 }
 
 } // namespace dust::editor
