@@ -1,3 +1,4 @@
+add_subdirectory(assimp)
 add_subdirectory(dear_imgui)
 add_subdirectory(format)
 add_subdirectory(freetype)
@@ -10,7 +11,7 @@ endif ()
 
 add_subdirectory(stb_image)
 
-install(TARGETS
-	dear_imgui
-	SDL2
-	SDL2main)
+#install(TARGETS
+#	dear_imgui
+#	SDL2
+#	SDL2main)

@@ -6,14 +6,16 @@ include(FetchContent)
 
 if (BUILD_SHARED_LIBS)
 	set(DUST_LIB_TYPE SHARED)
-	set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 else ()
 	set(DUST_LIB_TYPE STATIC)
 endif ()
+
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 add_subdirectory(3rdparty)
 add_subdirectory(desktop)
 add_subdirectory(editor)
 add_subdirectory(libs)
+add_subdirectory(map_compiler)
 
-install(TARGETS dust-desktop dust-editor)
+#install(TARGETS dust-desktop dust-editor)
