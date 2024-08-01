@@ -1,11 +1,8 @@
-#include <dust/game/game_loop.hpp>
-#include <dust/sdl/sdl.hpp>
+#include "game/game.hpp"
 
-int main(int argc, const char **argv)
+int main(int argc, char **argv)
 {
-	using namespace dust;
+	using Game = dust::game::Game;
 
-	auto &sdl = sdl::Lib::instance();
-
-	return game::GameLoop().start(std::make_shared<sdl::Window>("Dust Game", std::make_tuple(1280, 720)));
+	return Game(argc, argv).start();
 }
