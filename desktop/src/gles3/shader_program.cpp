@@ -55,6 +55,11 @@ std::string ShaderProgram::log() const
 	return log;
 }
 
+GLuint ShaderProgram::uniformBlockIndex(const std::string &name) const
+{
+	return glGetUniformBlockIndex(m_handle, name.c_str());
+}
+
 void ShaderProgram::attach(const Shader &shader)
 {
 	glAttachShader(m_handle, shader.handle());

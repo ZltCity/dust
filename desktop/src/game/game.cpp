@@ -4,6 +4,8 @@
 #include <assimp/postprocess.h> // Post processing flags
 #include <assimp/scene.h>		// Output data structure
 
+#include <glm/gtc/matrix_transform.hpp>
+
 #include "../gles3/rendering_context.hpp"
 #include "../logging/log.hpp"
 #include "../sdl/sdl.hpp"
@@ -16,9 +18,11 @@ namespace dust::game
 
 using Log = logging::Log;
 
-Game::Game(int argc, char **argv)
+Game::Game(int argc, char **argv) : m_camera(glm::vec3(0.f, 1.5f, 2.f), glm::vec3(0.f))
 {
 	initLogFile();
+
+	m_camera.perspective(glm::radians(95.f), 16.f / 9.f, 0.1f, 100.f);
 }
 
 int Game::start()
@@ -57,10 +61,12 @@ int Game::start()
 			}
 		}
 
+		m_brushes.back().ubo.back().second->update(0, m_camera.projection(), m_camera.view());
+
 		glClearColor(0.f, 0.f, 0.f, 0.f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-		m_brushes.front().set();
+		m_brushes.back().set();
 
 		for (const auto &mesh : m_meshes)
 		{
@@ -68,6 +74,8 @@ int Game::start()
 		}
 
 		renderingContext.swapBuffers();
+
+		m_camera.roll(0.001f);
 	}
 
 	saveConfig(m_config, configPath);
@@ -99,6 +107,7 @@ void Game::loadMap(const std::filesystem::path &path)
 	auto shaders = std::array {
 		gles3::Shader(GL_VERTEX_SHADER, util::loadBlob("./assets/shaders/basic.vs")),
 		gles3::Shader(GL_FRAGMENT_SHADER, util::loadBlob("./assets/shaders/basic.fs")),
+		gles3::Shader(GL_GEOMETRY_SHADER, util::loadBlob("./assets/shaders/wireframe.gs")),
 	};
 
 	for (auto &shader : shaders)
@@ -117,8 +126,13 @@ void Game::loadMap(const std::filesystem::path &path)
 	}
 
 	m_brushes = {
-		rendering::Brush {.shaderProgram = std::make_shared<gles3::ShaderProgram>(std::move(shaderProgram))},
+		rendering::Brush {
+			.shaderProgram = std::make_shared<gles3::ShaderProgram>(std::move(shaderProgram)),
+			.ubo = {std::make_pair(std::string("Transform"), std::make_shared<gles3::Buffer>(GL_UNIFORM_BUFFER))},
+		},
 	};
+
+	m_brushes.back().ubo.back().second->push(GL_STATIC_DRAW, glm::mat4(1.f), glm::mat4(1.f));
 
 	auto extractIndices = [](aiMesh *mesh) -> std::vector<uint32_t> {
 		auto indices = std::vector<uint32_t> {};
@@ -150,12 +164,12 @@ void Game::loadMap(const std::filesystem::path &path)
 
 		Log::debug(fmt::format("Loading mesh '{}'.", mesh->mName.C_Str()));
 
-		auto vbo = gles3::Buffer(GL_ARRAY_BUFFER, std::span(mesh->mVertices, mesh->mNumVertices), GL_STATIC_DRAW);
+		auto vbo = gles3::Buffer(GL_ARRAY_BUFFER, GL_STATIC_DRAW, std::span(mesh->mVertices, mesh->mNumVertices));
 		auto vao = gles3::VertexArray(vbo, vertexAttribs);
 
 		m_meshes.push_back(rendering::Mesh {
 			.vbo = std::make_shared<gles3::Buffer>(std::move(vbo)),
-			.ibo = std::make_shared<gles3::Buffer>(GL_ELEMENT_ARRAY_BUFFER, extractIndices(mesh), GL_STATIC_DRAW),
+			.ibo = std::make_shared<gles3::Buffer>(GL_ELEMENT_ARRAY_BUFFER, GL_STATIC_DRAW, extractIndices(mesh)),
 			.vao = std::make_shared<gles3::VertexArray>(std::move(vao)),
 			.mode = GL_TRIANGLES,
 			.count = static_cast<GLsizei>(mesh->mNumFaces * 3)});

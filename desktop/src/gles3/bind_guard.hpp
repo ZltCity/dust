@@ -12,6 +12,12 @@ struct Binding
 {};
 
 template<class T>
+Binding(T) -> Binding<T>;
+
+template<class T, class... TArgs>
+Binding(T, TArgs...) -> Binding<T>;
+
+template<class T>
 concept Bindable = requires(Binding<T> binding, GLuint handle)
 {
 	// clang-format off

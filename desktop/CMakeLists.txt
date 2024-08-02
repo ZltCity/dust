@@ -6,6 +6,7 @@ add_executable(dust-desktop
 	src/egl/display.cpp
 	src/egl/error.cpp
 	src/egl/surface.cpp
+	src/game/camera.cpp
 	src/game/config.cpp
 	src/game/game.cpp
 	src/gles3/buffer.cpp

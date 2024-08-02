@@ -21,6 +21,7 @@ public:
 
 	[[nodiscard]] GLuint handle() const;
 	[[nodiscard]] std::string log() const;
+	[[nodiscard]] GLuint uniformBlockIndex(const std::string &name) const;
 
 	void attach(const Shader &shader);
 	[[nodiscard]] bool link();

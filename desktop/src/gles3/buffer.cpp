@@ -73,6 +73,10 @@ GLuint Buffer::create()
 Binding<Buffer>::Binding(const Buffer &buffer) : target(buffer.target()), handle(buffer.handle())
 {}
 
+Binding<Buffer>::Binding(const Buffer &buffer, GLuint bindingPoint_)
+	: target(buffer.target()), handle(buffer.handle()), bindingPoint(bindingPoint_)
+{}
+
 void Binding<Buffer>::bind() const
 {
 	glBindBuffer(target, handle);
@@ -81,6 +85,16 @@ void Binding<Buffer>::bind() const
 void Binding<Buffer>::bind(GLuint handle_) const
 {
 	glBindBuffer(target, handle_);
+}
+
+void Binding<Buffer>::bindBase() const
+{
+	glBindBufferBase(target, bindingPoint, handle);
+}
+
+void Binding<Buffer>::bindBase(GLuint handle_) const
+{
+	glBindBufferBase(target, bindingPoint, handle_);
 }
 
 GLuint Binding<Buffer>::current() const

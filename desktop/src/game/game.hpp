@@ -6,6 +6,7 @@
 
 #include "../rendering/brush.hpp"
 #include "../rendering/mesh.hpp"
+#include "camera.hpp"
 #include "config.hpp"
 
 namespace dust::game
@@ -33,6 +34,7 @@ private:
 
 	Config m_config;
 
+	Camera m_camera;
 	std::vector<rendering::Brush> m_brushes;
 	std::vector<rendering::Mesh> m_meshes;
 };
