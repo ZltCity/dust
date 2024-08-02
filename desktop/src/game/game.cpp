@@ -6,6 +6,8 @@
 
 #include <glm/gtc/matrix_transform.hpp>
 
+#include <SDL_mouse.h>
+
 #include "../gles3/rendering_context.hpp"
 #include "../logging/log.hpp"
 #include "../sdl/sdl.hpp"
@@ -18,11 +20,9 @@ namespace dust::game
 
 using Log = logging::Log;
 
-Game::Game(int argc, char **argv) : m_camera(glm::vec3(0.f, 1.5f, 2.f), glm::vec3(0.f))
+Game::Game(int argc, char **argv) : m_camera(glm::vec3(0.f, 0.0f, 2.f), glm::vec3(0.f))
 {
 	initLogFile();
-
-	m_camera.perspective(glm::radians(95.f), 16.f / 9.f, 0.1f, 100.f);
 }
 
 int Game::start()
@@ -33,7 +33,7 @@ int Game::start()
 
 	auto &sdl = sdl::Lib::instance();
 	auto window =
-		std::make_shared<sdl::Window>("Dust Game", std::make_tuple(1280, 720), SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE);
+		std::make_shared<sdl::Window>("Dust Game", std::make_tuple(2560, 1440), SDL_WINDOW_SHOWN | SDL_WINDOW_FULLSCREEN_DESKTOP);
 	auto renderingContext = gles3::RenderingContext(window, m_config.gles3.debugContext);
 
 	renderingContext.makeCurrent();
@@ -49,6 +49,10 @@ int Game::start()
 	loadMap("./assets/maps/test/test.glb");
 	//
 
+	SDL_SetRelativeMouseMode(SDL_TRUE);
+
+	auto moveForward = false, moveBackward = false, moveLeft = false, moveRight = false;
+
 	while (not quit)
 	{
 		auto event = SDL_Event {};
@@ -59,9 +63,62 @@ int Game::start()
 			{
 				quit = true;
 			}
+
+			switch (event.type)
+			{
+				case SDL_MOUSEMOTION:
+				{
+					m_camera.yaw(static_cast<float>(event.motion.xrel) * -0.002f);
+					m_camera.pitch(static_cast<float>(event.motion.yrel) * -0.002f);
+
+					break;
+				}
+				case SDL_KEYDOWN:
+				{
+					switch (event.key.keysym.sym)
+					{
+						case SDLK_w: moveForward = true; break;
+						case SDLK_s: moveBackward = true; break;
+						case SDLK_a: moveLeft = true; break;
+						case SDLK_d: moveRight = true; break;
+					}
+					break;
+				}
+				case SDL_KEYUP:
+				{
+					switch (event.key.keysym.sym)
+					{
+						case SDLK_w: moveForward = false; break;
+						case SDLK_s: moveBackward = false; break;
+						case SDLK_a: moveLeft = false; break;
+						case SDLK_d: moveRight = false; break;
+					}
+					break;
+				}
+			}
 		}
 
-		m_brushes.back().ubo.back().second->update(0, m_camera.projection(), m_camera.view());
+		const auto [right, up, forward] = m_camera.axes();
+
+		if (moveForward)
+		{
+			m_camera.move(forward * 0.005f);
+		}
+		if (moveBackward)
+		{
+			m_camera.move(forward * -0.005f);
+		}
+		if (moveLeft)
+		{
+			m_camera.move(right * -0.005f);
+		}
+		if (moveRight)
+		{
+			m_camera.move(right * 0.005f);
+		}
+
+		m_brushes.back().ubo.back().second->update(
+			0, Camera::perspective(glm::radians(95.f), 16.f / 9.f, 0.1f, 100.f), m_camera.view());
 
 		glClearColor(0.f, 0.f, 0.f, 0.f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -74,8 +131,7 @@ int Game::start()
 		}
 
 		renderingContext.swapBuffers();
-
-		m_camera.roll(0.001f);
+//		SDL_WarpMouseInWindow(window->handle(), 640, 360);
 	}
 
 	saveConfig(m_config, configPath);

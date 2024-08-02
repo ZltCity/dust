@@ -5,32 +5,35 @@
 namespace dust::game
 {
 
+struct Axes
+{
+	glm::vec3 x, y, z;
+};
+
 class Camera
 {
 public:
+	Camera() = default;
 	Camera(glm::vec3 position, glm::vec3 target, glm::vec3 up = {0.f, 1.f, 0.f});
 
-	void yaw(float angle, const glm::vec3 &up);
-	void yaw(float angle, const glm::vec3 &pivot, const glm::vec3 &up);
+	void yaw(float angle);
 	void pitch(float angle);
-	void pitch(float angle, const glm::vec3 &pivot);
-	void roll(float angle);
-	void move(const glm::vec3 &distance);
-	void lookAt(glm::vec3 position, glm::vec3 target, glm::vec3 up = {0.1f, 1.f, 0.f});
-	void ortho(float left, float right, float bottom, float top, float near, float far);
-	void perspective(float fovY, float aspect, float near, float far);
+	void move(const glm::vec3 &direction);
 
 	[[nodiscard]] glm::vec3 position() const;
-	//	[[nodiscard]] glm::vec3 target() const;
-	[[nodiscard]] glm::vec3 forward() const;
-	[[nodiscard]] glm::vec3 up() const;
-	[[nodiscard]] glm::vec3 right() const;
+	void position(glm::vec3 value);
+
+	[[nodiscard]] Axes axes() const;
 	[[nodiscard]] glm::mat4 view() const;
-	[[nodiscard]] glm::mat4 projection() const;
+
+	[[nodiscard]] static glm::mat4 ortho(float left, float right, float bottom, float top, float near, float far);
+	[[nodiscard]] static glm::mat4 perspective(float fovY, float aspect, float near, float far);
 
 private:
-	mutable glm::vec3 m_position, m_forward, m_up, m_right;
-	glm::mat4 m_projection;
+	static constexpr auto pitchLimit = glm::radians(89.f);
+
+	glm::vec3 m_position, m_forward, m_up;
+	float m_yawAngle, m_pitchAngle;
 };
 
 } // namespace dust::game
