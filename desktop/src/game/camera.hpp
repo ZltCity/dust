@@ -13,7 +13,7 @@ struct Axes
 class Camera
 {
 public:
-	Camera() = default;
+	Camera();
 	Camera(glm::vec3 position, glm::vec3 target, glm::vec3 up = {0.f, 1.f, 0.f});
 
 	void yaw(float angle);
@@ -30,9 +30,14 @@ public:
 	[[nodiscard]] static glm::mat4 perspective(float fovY, float aspect, float near, float far);
 
 private:
-	static constexpr auto pitchLimit = glm::radians(89.f);
+	static constexpr auto pitchLimit = glm::radians(90.f);
 
-	glm::vec3 m_position, m_forward, m_up;
+	[[nodiscard]] float calcPitch(const glm::vec3 &forward) const;
+
+	const glm::vec3 m_forward, m_up;
+	const float m_pitchCorrection;
+
+	glm::vec3 m_position;
 	float m_yawAngle, m_pitchAngle;
 };
 

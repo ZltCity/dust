@@ -5,8 +5,22 @@
 namespace dust::game
 {
 
+Camera::Camera()
+	: m_forward(0.f, 0.f, -1.f),
+	  m_up(0.f, 1.f, 0.f),
+	  m_pitchCorrection {},
+	  m_position(0.f),
+	  m_yawAngle {},
+	  m_pitchAngle {}
+{}
+
 Camera::Camera(glm::vec3 position, glm::vec3 target, glm::vec3 up)
-	: m_position(position), m_forward(target - position), m_up(up), m_yawAngle {}, m_pitchAngle {}
+	: m_forward(glm::normalize(target - position)),
+	  m_up(glm::normalize(up)),
+	  m_pitchCorrection(calcPitch(m_forward)),
+	  m_position(position),
+	  m_yawAngle {},
+	  m_pitchAngle {}
 {}
 
 void Camera::yaw(float angle)
@@ -16,7 +30,7 @@ void Camera::yaw(float angle)
 
 void Camera::pitch(float angle)
 {
-	m_pitchAngle = glm::clamp(m_pitchAngle + angle, -pitchLimit, pitchLimit);
+	m_pitchAngle = glm::clamp(m_pitchAngle + angle, -(pitchLimit + m_pitchCorrection), pitchLimit - m_pitchCorrection);
 }
 
 void Camera::move(const glm::vec3 &direction)
@@ -59,6 +73,11 @@ glm::mat4 Camera::ortho(float left, float right, float bottom, float top, float 
 glm::mat4 Camera::perspective(float fovY, float aspect, float near, float far)
 {
 	return glm::perspectiveRH(fovY, aspect, near, far);
+}
+
+float Camera::calcPitch(const glm::vec3 &forward) const
+{
+	return M_PI_2 - glm::acos(glm::dot(forward, m_up) / glm::length(forward));
 }
 
 } // namespace dust::game
