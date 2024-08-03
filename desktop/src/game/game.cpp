@@ -46,7 +46,7 @@ int Game::start()
 	auto quit = false;
 
 	//
-	loadMap("./assets/maps/test/test.glb");
+	loadMap("./assets/maps/test/old_rusty_car.glb");
 	//
 
 	SDL_SetRelativeMouseMode(SDL_TRUE);
@@ -118,7 +118,9 @@ int Game::start()
 		}
 
 		m_brushes.back().ubo.back().second->update(
-			0, Camera::perspective(glm::radians(95.f), 16.f / 9.f, 0.1f, 100.f), m_camera.view());
+			0, Camera::perspective(glm::radians(95.f), 16.f / 9.f, 0.1f, 100.f),
+			m_camera.view() * glm::rotate(glm::mat4(1.f), glm::radians(270.f), glm::vec3(1.f, 0.f, 0.f)) *
+				glm::scale(glm::mat4(1.f), glm::vec3(0.005f)));
 
 		glClearColor(0.f, 0.f, 0.f, 0.f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
