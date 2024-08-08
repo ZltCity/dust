@@ -11,6 +11,13 @@ Buffer::Buffer() : m_target {}, m_handle {}
 Buffer::Buffer(GLenum target) : m_target(target), m_handle(create())
 {}
 
+Buffer::Buffer(GLenum target, GLenum usage, GLsizeiptr size) : m_target(target), m_handle(create())
+{
+	auto bind = BindGuard(*this);
+
+	glBufferData(m_target, size, nullptr, usage);
+}
+
 Buffer::Buffer(Buffer &&other) noexcept : m_target {}, m_handle {}
 {
 	swap(other);

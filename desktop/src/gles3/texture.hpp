@@ -27,11 +27,11 @@ public:
 
 	void storage2D(GLsizei levels, GLenum internalFormat, GLsizei width, GLsizei height);
 	template<class TContainer>
-	void image2D(
-		GLint level, GLint internalFormat, GLsizei width, GLsizei height, GLenum format, GLenum type,
+	void subImage2D(
+		GLint level, GLint xOffset, GLint yOffset, GLsizei width, GLsizei height, GLenum format, GLenum type,
 		const TContainer &data);
 
-	static void activeTexture(GLint unit);
+	void texParameter(GLenum name, GLint value);
 
 	void swap(Texture &other) noexcept;
 	void reset() noexcept;
@@ -47,6 +47,7 @@ template<>
 struct Binding<Texture>
 {
 	explicit Binding(const Texture &texture);
+	Binding(const Texture &texture, GLenum unit);
 
 	void bind() const;
 	void bind(GLuint handle_) const;
@@ -55,16 +56,17 @@ struct Binding<Texture>
 
 	GLenum target;
 	GLuint handle;
+	GLenum unit = GL_TEXTURE0;
 };
 
 template<class TContainer>
-void Texture::image2D(
-	GLint level, GLint internalFormat, GLsizei width, GLsizei height, GLenum format, GLenum type,
+void Texture::subImage2D(
+	GLint level, GLint xOffset, GLint yOffset, GLsizei width, GLsizei height, GLenum format, GLenum type,
 	const TContainer &data)
 {
 	auto bind = BindGuard(*this);
 
-	glTexImage2D(m_target, level, internalFormat, width, height, 0, format, type, data.data());
+	glTexSubImage2D(m_target, level, xOffset, yOffset, width, height, format, type, data.data());
 }
 
 } // namespace dust::gles3

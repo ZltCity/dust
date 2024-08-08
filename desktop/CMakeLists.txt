@@ -6,7 +6,6 @@ add_executable(dust-desktop
 	src/egl/display.cpp
 	src/egl/error.cpp
 	src/egl/surface.cpp
-	src/game/camera.cpp
 	src/game/config.cpp
 	src/game/game.cpp
 	src/gles3/buffer.cpp
@@ -17,8 +16,13 @@ add_executable(dust-desktop
 	src/gles3/vertex_array.cpp
 	src/imgui/imgui.cpp
 	src/logging/log.cpp
-	src/rendering/brush.cpp
-	src/rendering/mesh.cpp
+	src/scene/aabb.cpp
+	src/scene/bvh.cpp
+	src/scene/camera.cpp
+	src/scene/face.cpp
+	src/scene/material.cpp
+	src/scene/mesh.cpp
+	src/scene/scene.cpp
 	src/sdl/sdl.cpp
 	src/sdl/window.cpp
 	src/threading/queue.cpp

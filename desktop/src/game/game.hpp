@@ -4,9 +4,10 @@
 
 #include <GLES3/gl32.h>
 
-#include "../rendering/brush.hpp"
-#include "../rendering/mesh.hpp"
-#include "camera.hpp"
+#include "../scene/camera.hpp"
+#include "../scene/material.hpp"
+#include "../scene/mesh.hpp"
+#include "../scene/scene.hpp"
 #include "config.hpp"
 
 namespace dust::game
@@ -34,9 +35,11 @@ private:
 
 	Config m_config;
 
-	Camera m_camera;
-	std::vector<rendering::Brush> m_brushes;
-	std::vector<rendering::Mesh> m_meshes;
+//	Camera m_camera;
+//	std::shared_ptr<gles3::Buffer> m_transformUBO;
+//	std::vector<rendering::Brush> m_brushes;
+//	std::vector<rendering::Mesh> m_meshes;
+//	std::vector<std::pair<int, int>> m_renderList;
 };
 
 } // namespace dust::game

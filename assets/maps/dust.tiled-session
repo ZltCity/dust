@@ -1,0 +1,41 @@
+{
+    "Map/SizeTest": {
+        "height": 4300,
+        "width": 2
+    },
+    "activeFile": "graveyard.tmj",
+    "expandedProjectPaths": [
+        "."
+    ],
+    "file.lastUsedOpenFilter": "All Files (*)",
+    "fileStates": {
+        "/home/roman/Projects/dust/assets/props.tsx": {
+            "dynamicWrapping": true,
+            "scaleInDock": 1
+        },
+        "graveyard.tmj": {
+            "scale": 2,
+            "selectedLayer": 1,
+            "viewCenter": {
+                "x": 465,
+                "y": 939.75
+            }
+        },
+        "props.tsx": {
+            "dynamicWrapping": false,
+            "scaleInDock": 1,
+            "scaleInEditor": 1
+        }
+    },
+    "map.fixedSize": false,
+    "openFiles": [
+        "props.tsx",
+        "graveyard.tmj"
+    ],
+    "project": "dust.tiled-project",
+    "property.type": "string",
+    "recentFiles": [
+        "props.tsx",
+        "graveyard.tmj"
+    ]
+}

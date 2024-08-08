@@ -58,9 +58,11 @@ void Texture::storage2D(GLsizei levels, GLenum internalFormat, GLsizei width, GL
 	glTexStorage2D(m_target, levels, internalFormat, width, height);
 }
 
-void Texture::activeTexture(GLint unit)
+void Texture::texParameter(GLenum name, GLint value)
 {
-	glActiveTexture(GL_TEXTURE0 + unit);
+	auto bind = BindGuard(*this);
+
+	glTexParameteri(m_target, name, value);
 }
 
 void Texture::swap(Texture &other) noexcept
@@ -92,13 +94,19 @@ GLuint Texture::create()
 Binding<Texture>::Binding(const Texture &texture) : target(texture.target()), handle(texture.handle())
 {}
 
+Binding<Texture>::Binding(const Texture &texture, GLenum unit)
+	: target(texture.target()), handle(texture.handle()), unit(unit)
+{}
+
 void Binding<Texture>::bind() const
 {
+	glActiveTexture(unit);
 	glBindTexture(target, handle);
 }
 
 void Binding<Texture>::bind(GLuint handle_) const
 {
+	glActiveTexture(unit);
 	glBindTexture(target, handle_);
 }
 

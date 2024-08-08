@@ -14,6 +14,7 @@ class Buffer
 public:
 	Buffer();
 	explicit Buffer(GLenum target);
+	Buffer(GLenum target, GLenum usage, GLsizeiptr size);
 	template<class TCollection>
 	Buffer(GLenum target, GLenum usage, const TCollection &data_);
 	Buffer(const Buffer &) = delete;
