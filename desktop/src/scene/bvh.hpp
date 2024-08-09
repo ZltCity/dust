@@ -11,10 +11,10 @@ namespace dust::scene
 
 struct BVH
 {
-	[[nodiscard]] static std::vector<BVH> build(std::span<const glm::vec3> vertices, std::span<const Face> faces);
+	[[nodiscard]] static std::vector<BVH> build(std::span<glm::vec3> vertices, std::span<Face> faces);
 
 	AABB aabb;
-	int32_t batchIndex, childrenCount, children[];
+	int32_t next;
 };
 
 } // namespace dust::scene

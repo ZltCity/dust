@@ -18,13 +18,13 @@
 #include "../util/stream.hpp"
 #include "game.hpp"
 
-
 namespace dust::game
 {
 
 using Log = logging::Log;
 
-Game::Game(int argc, char **argv) //: m_camera(glm::vec3(0.f, 0.0f, 2.f), glm::vec3(0.f))
+Game::Game(
+	[[maybe_unused]] int argc, [[maybe_unused]] char **argv) //: m_camera(glm::vec3(0.f, 0.0f, 2.f), glm::vec3(0.f))
 {
 	initLogFile();
 }
@@ -35,7 +35,7 @@ int Game::start()
 
 	m_config = loadConfig(configPath);
 
-	auto &sdl = sdl::Lib::instance();
+	[[maybe_unused]] auto &sdl = sdl::Lib::instance();
 	auto window = std::make_shared<sdl::Window>(
 		"Dust Game", std::make_tuple(2560, 1440), SDL_WINDOW_SHOWN | SDL_WINDOW_FULLSCREEN_DESKTOP);
 	auto renderingContext = gles3::RenderingContext(window, m_config.gles3.debugContext);
@@ -51,15 +51,17 @@ int Game::start()
 
 	glEnable(GL_DEPTH_TEST);
 
-//	SDL_SetRelativeMouseMode(SDL_TRUE);
+		SDL_SetRelativeMouseMode(SDL_TRUE);
 
 	loadMap({});
 
-	auto moveForward = false, moveBackward = false, moveLeft = false, moveRight = false;
+	// auto moveForward = false, moveBackward = false, moveLeft = false, moveRight = false;
 
 	while (not quit)
 	{
 		auto event = SDL_Event {};
+
+		auto xrel = 0.f, yrel = 0.f;
 
 		while (SDL_PollEvent(&event))
 		{
@@ -68,15 +70,17 @@ int Game::start()
 				quit = true;
 			}
 
-//			switch (event.type)
-//			{
-//				case SDL_MOUSEMOTION:
-//				{
+			switch (event.type)
+			{
+				case SDL_MOUSEMOTION:
+				{
 //					m_camera.yaw(static_cast<float>(event.motion.xrel) * -0.002f);
 //					m_camera.pitch(static_cast<float>(event.motion.yrel) * -0.002f);
-//
-//					break;
-//				}
+					xrel = static_cast<float>(event.motion.xrel) * -0.002f;
+					yrel = static_cast<float>(event.motion.yrel) * -0.002f;
+
+					break;
+				}
 //				case SDL_KEYDOWN:
 //				{
 //					switch (event.key.keysym.sym)
@@ -99,41 +103,43 @@ int Game::start()
 //					}
 //					break;
 //				}
-//			}
+			}
 		}
 
-//		const auto [right, up, forward] = m_camera.axes();
-//
-//		if (moveForward)
-//		{
-//			m_camera.move(forward * 0.05f);
-//		}
-//		if (moveBackward)
-//		{
-//			m_camera.move(forward * -0.05f);
-//		}
-//		if (moveLeft)
-//		{
-//			m_camera.move(right * -0.05f);
-//		}
-//		if (moveRight)
-//		{
-//			m_camera.move(right * 0.05f);
-//		}
+		//		const auto [right, up, forward] = m_camera.axes();
+		//
+		//		if (moveForward)
+		//		{
+		//			m_camera.move(forward * 0.05f);
+		//		}
+		//		if (moveBackward)
+		//		{
+		//			m_camera.move(forward * -0.05f);
+		//		}
+		//		if (moveLeft)
+		//		{
+		//			m_camera.move(right * -0.05f);
+		//		}
+		//		if (moveRight)
+		//		{
+		//			m_camera.move(right * 0.05f);
+		//		}
 
-//		m_transformUBO->update(
-//			0, Camera::perspective(glm::radians(95.f), 16.f / 9.f, 0.1f, 1000.f),
-//			m_camera.view() // * glm::rotate(glm::mat4(1.f), glm::radians(270.f), glm::vec3(1.f, 0.f, 0.f)) *
-//				* glm::scale(glm::mat4(1.f), glm::vec3(.1f)));
+		//		m_transformUBO->update(
+		//			0, Camera::perspective(glm::radians(95.f), 16.f / 9.f, 0.1f, 1000.f),
+		//			m_camera.view() // * glm::rotate(glm::mat4(1.f), glm::radians(270.f), glm::vec3(1.f, 0.f, 0.f)) *
+		//				* glm::scale(glm::mat4(1.f), glm::vec3(.1f)));
 
 		glClearColor(0.f, 0.f, 0.f, 0.f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-//		for (const auto [meshIndex, brushIndex] : m_renderList)
-//		{
-//			m_brushes.at(brushIndex).set();
-//			m_meshes.at(meshIndex).draw();
-//		}
+		m_scene->drawStaticGeometry(xrel, yrel);
+
+		//		for (const auto [meshIndex, brushIndex] : m_renderList)
+		//		{
+		//			m_brushes.at(brushIndex).set();
+		//			m_meshes.at(meshIndex).draw();
+		//		}
 
 		renderingContext.swapBuffers();
 	}
@@ -147,191 +153,193 @@ void Game::loadMap(const std::filesystem::path &path)
 {
 	Log::debug(fmt::format("Loading map '{}'.", path.generic_string()));
 
-	auto map = scene::Scene("./assets", "graveyard");
+//	auto map = scene::Scene("./assets", "graveyard");
+	m_scene = std::make_unique<scene::Scene>("./assets", "graveyard");
 
-//	// Create an instance of the Importer class
-//	Assimp::Importer importer;
-//
-//	// And have it read the given file with some example postprocessing
-//	// Usually - if speed is not the most important aspect for you - you'll
-//	// probably to request more postprocessing than we do in this example.
-//	const aiScene *scene = importer.ReadFile(
-//		path.generic_string(),
-//		//											 aiProcess_CalcTangentSpace |
-//		aiProcess_FlipUVs | aiProcess_Triangulate | aiProcess_JoinIdenticalVertices | aiProcess_SortByPType);
-//
-//	// If the import failed, report it
-//	if (nullptr == scene)
-//	{
-//		throw std::runtime_error(
-//			fmt::format("Could not import model file '{}'\n{}.", path.generic_string(), importer.GetErrorString()));
-//	}
-//
-//	auto shaders = std::array {
-//		gles3::Shader(GL_VERTEX_SHADER, util::loadBlob("./assets/shaders/basic.vs")),
-//		gles3::Shader(GL_FRAGMENT_SHADER, util::loadBlob("./assets/shaders/basic.fs")),
-//		gles3::Shader(GL_GEOMETRY_SHADER, util::loadBlob("./assets/shaders/wireframe.gs")),
-//	};
-//
-//	for (auto &shader : shaders)
-//	{
-//		if (not shader.compile())
-//		{
-//			throw std::runtime_error(shader.log());
-//		}
-//	}
-//
-//	auto shaderProgram = std::make_shared<gles3::ShaderProgram>(shaders);
-//
-//	if (not shaderProgram->link())
-//	{
-//		throw std::runtime_error(shaderProgram->log());
-//	}
-//
-//	m_transformUBO = std::make_shared<gles3::Buffer>(
-//		GL_UNIFORM_BUFFER, GL_DYNAMIC_DRAW, static_cast<GLsizeiptr>(sizeof(glm::mat4) * 2));
-//	m_brushes.clear();
-//
-//	for (auto i = 0; i < scene->mNumMaterials; ++i)
-//	{
-//		const auto material = scene->mMaterials[i];
-//		auto brush =
-//			rendering::Brush {.shaderProgram = shaderProgram, .ubo = {{std::string("Transform"), m_transformUBO}}};
-//
-//		for (auto t = 0; t < material->GetTextureCount(aiTextureType_DIFFUSE); ++t)
-//		{
-//			auto texturePath = aiString();
-//
-//			if (material->GetTexture(aiTextureType_DIFFUSE, t, &texturePath) != aiReturn_SUCCESS)
-//			{
-//				throw std::runtime_error("Could not get diffuse texture info.");
-//			}
-//
-//			auto texture = scene->GetEmbeddedTexture(texturePath.C_Str());
-//
-//			if (not texture)
-//			{
-//				throw std::runtime_error("Could not get diffuse texture.");
-//			}
-//
-//			int twidth, theight, tchannels;
-//			auto bytes = stbi_load_from_memory(
-//				reinterpret_cast<stbi_uc *>(texture->pcData), static_cast<int>(texture->mWidth), &twidth, &theight,
-//				&tchannels, 0);
-//
-//			if (not bytes)
-//			{
-//				throw std::runtime_error("Could not decode texture image.");
-//			}
-//
-//			GLenum internalFormat, format;
-//
-//			switch (tchannels)
-//			{
-//				case 1:
-//				{
-//					internalFormat = GL_R8;
-//					format = GL_RED;
-//					break;
-//				}
-//				case 2:
-//				{
-//					internalFormat = GL_RG8;
-//					format = GL_RG;
-//					break;
-//				}
-//				case 3:
-//				{
-//					internalFormat = GL_RGB8;
-//					format = GL_RGB;
-//					break;
-//				}
-//				case 4:
-//				{
-//					internalFormat = GL_RGBA8;
-//					format = GL_RGBA;
-//					break;
-//				}
-//				default: throw std::runtime_error("Unsupported texture type.");
-//			}
-//
-//			brush.diffuse.push_back(std::make_shared<gles3::Texture>(
-//				GL_TEXTURE_2D, 1, internalFormat, static_cast<GLsizei>(twidth), static_cast<GLsizei>(theight)));
-//			brush.diffuse.back()->subImage2D(
-//				0, 0, 0, static_cast<GLsizei>(twidth), static_cast<GLsizei>(theight), format, GL_UNSIGNED_BYTE,
-//				std::span<const stbi_uc>(bytes, twidth * theight * tchannels));
-//			brush.diffuse.back()->texParameter(GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-//			brush.diffuse.back()->texParameter(GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-//
-//			stbi_image_free(bytes);
-//		}
-//
-//		m_brushes.push_back(std::move(brush));
-//	}
-//
-//	auto extractIndices = [](aiMesh *mesh) -> std::vector<uint32_t> {
-//		auto indices = std::vector<uint32_t> {};
-//
-//		for (auto i = 0; i < mesh->mNumFaces; ++i)
-//		{
-//			indices.insert(indices.end(), mesh->mFaces[i].mIndices, mesh->mFaces[i].mIndices + 3);
-//		}
-//
-//		return indices;
-//	};
-//
-//	m_meshes.clear();
-//
-//	struct Vertex
-//	{
-//		glm::vec3 position;
-//		glm::vec2 texCoord;
-//	};
-//
-//	const auto vertexAttribs = std::array {
-//		gles3::VertexAttrib {
-//			.size = 3, .type = GL_FLOAT, .normalized = GL_FALSE, .stride = sizeof(Vertex), .offset = 0},
-//		gles3::VertexAttrib {
-//			.size = 2, .type = GL_FLOAT, .normalized = GL_FALSE, .stride = sizeof(Vertex), .offset = sizeof(glm::vec3)},
-//	};
-//
-//	for (auto i = 0; i < scene->mNumMeshes; ++i)
-//	{
-//		const auto mesh = scene->mMeshes[i];
-//
-//		if (mesh->mPrimitiveTypes != aiPrimitiveType_TRIANGLE)
-//		{
-//			Log::debug(fmt::format("Skip mesh '{}'.", mesh->mName.C_Str()));
-//			continue;
-//		}
-//
-//		auto vertices = std::vector<Vertex>(mesh->mNumVertices);
-//
-//		for (auto v = 0; v < mesh->mNumVertices; ++v)
-//		{
-//			auto &vertex = vertices.at(v);
-//
-//			vertex.position = glm::vec3(mesh->mVertices[v].x, mesh->mVertices[v].y, mesh->mVertices[v].z);
-//
-//			if (mesh->mTextureCoords[0])
-//			{
-//				vertex.texCoord = glm::vec2(mesh->mTextureCoords[0][v].x, mesh->mTextureCoords[0][v].y);
-//			}
-//		}
-//
-//		Log::debug(fmt::format("Loading mesh '{}'.", mesh->mName.C_Str()));
-//
-//		auto vbo = gles3::Buffer(GL_ARRAY_BUFFER, GL_STATIC_DRAW, vertices);
-//		auto vao = gles3::VertexArray(vbo, vertexAttribs);
-//
-//		m_meshes.push_back(rendering::Mesh {
-//			.vbo = std::make_shared<gles3::Buffer>(std::move(vbo)),
-//			.ibo = std::make_shared<gles3::Buffer>(GL_ELEMENT_ARRAY_BUFFER, GL_STATIC_DRAW, extractIndices(mesh)),
-//			.vao = std::make_shared<gles3::VertexArray>(std::move(vao)),
-//			.mode = GL_TRIANGLES,
-//			.count = static_cast<GLsizei>(mesh->mNumFaces * 3)});
-//		m_renderList.emplace_back(i, mesh->mMaterialIndex);
-//	}
+	//	// Create an instance of the Importer class
+	//	Assimp::Importer importer;
+	//
+	//	// And have it read the given file with some example postprocessing
+	//	// Usually - if speed is not the most important aspect for you - you'll
+	//	// probably to request more postprocessing than we do in this example.
+	//	const aiScene *scene = importer.ReadFile(
+	//		path.generic_string(),
+	//		//											 aiProcess_CalcTangentSpace |
+	//		aiProcess_FlipUVs | aiProcess_Triangulate | aiProcess_JoinIdenticalVertices | aiProcess_SortByPType);
+	//
+	//	// If the import failed, report it
+	//	if (nullptr == scene)
+	//	{
+	//		throw std::runtime_error(
+	//			fmt::format("Could not import model file '{}'\n{}.", path.generic_string(), importer.GetErrorString()));
+	//	}
+	//
+	//	auto shaders = std::array {
+	//		gles3::Shader(GL_VERTEX_SHADER, util::loadBlob("./assets/shaders/basic.vs")),
+	//		gles3::Shader(GL_FRAGMENT_SHADER, util::loadBlob("./assets/shaders/basic.fs")),
+	//		gles3::Shader(GL_GEOMETRY_SHADER, util::loadBlob("./assets/shaders/wireframe.gs")),
+	//	};
+	//
+	//	for (auto &shader : shaders)
+	//	{
+	//		if (not shader.compile())
+	//		{
+	//			throw std::runtime_error(shader.log());
+	//		}
+	//	}
+	//
+	//	auto shaderProgram = std::make_shared<gles3::ShaderProgram>(shaders);
+	//
+	//	if (not shaderProgram->link())
+	//	{
+	//		throw std::runtime_error(shaderProgram->log());
+	//	}
+	//
+	//	m_transformUBO = std::make_shared<gles3::Buffer>(
+	//		GL_UNIFORM_BUFFER, GL_DYNAMIC_DRAW, static_cast<GLsizeiptr>(sizeof(glm::mat4) * 2));
+	//	m_brushes.clear();
+	//
+	//	for (auto i = 0; i < scene->mNumMaterials; ++i)
+	//	{
+	//		const auto material = scene->mMaterials[i];
+	//		auto brush =
+	//			rendering::Brush {.shaderProgram = shaderProgram, .ubo = {{std::string("Transform"), m_transformUBO}}};
+	//
+	//		for (auto t = 0; t < material->GetTextureCount(aiTextureType_DIFFUSE); ++t)
+	//		{
+	//			auto texturePath = aiString();
+	//
+	//			if (material->GetTexture(aiTextureType_DIFFUSE, t, &texturePath) != aiReturn_SUCCESS)
+	//			{
+	//				throw std::runtime_error("Could not get diffuse texture info.");
+	//			}
+	//
+	//			auto texture = scene->GetEmbeddedTexture(texturePath.C_Str());
+	//
+	//			if (not texture)
+	//			{
+	//				throw std::runtime_error("Could not get diffuse texture.");
+	//			}
+	//
+	//			int twidth, theight, tchannels;
+	//			auto bytes = stbi_load_from_memory(
+	//				reinterpret_cast<stbi_uc *>(texture->pcData), static_cast<int>(texture->mWidth), &twidth, &theight,
+	//				&tchannels, 0);
+	//
+	//			if (not bytes)
+	//			{
+	//				throw std::runtime_error("Could not decode texture image.");
+	//			}
+	//
+	//			GLenum internalFormat, format;
+	//
+	//			switch (tchannels)
+	//			{
+	//				case 1:
+	//				{
+	//					internalFormat = GL_R8;
+	//					format = GL_RED;
+	//					break;
+	//				}
+	//				case 2:
+	//				{
+	//					internalFormat = GL_RG8;
+	//					format = GL_RG;
+	//					break;
+	//				}
+	//				case 3:
+	//				{
+	//					internalFormat = GL_RGB8;
+	//					format = GL_RGB;
+	//					break;
+	//				}
+	//				case 4:
+	//				{
+	//					internalFormat = GL_RGBA8;
+	//					format = GL_RGBA;
+	//					break;
+	//				}
+	//				default: throw std::runtime_error("Unsupported texture type.");
+	//			}
+	//
+	//			brush.diffuse.push_back(std::make_shared<gles3::Texture>(
+	//				GL_TEXTURE_2D, 1, internalFormat, static_cast<GLsizei>(twidth), static_cast<GLsizei>(theight)));
+	//			brush.diffuse.back()->subImage2D(
+	//				0, 0, 0, static_cast<GLsizei>(twidth), static_cast<GLsizei>(theight), format, GL_UNSIGNED_BYTE,
+	//				std::span<const stbi_uc>(bytes, twidth * theight * tchannels));
+	//			brush.diffuse.back()->texParameter(GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	//			brush.diffuse.back()->texParameter(GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	//
+	//			stbi_image_free(bytes);
+	//		}
+	//
+	//		m_brushes.push_back(std::move(brush));
+	//	}
+	//
+	//	auto extractIndices = [](aiMesh *mesh) -> std::vector<uint32_t> {
+	//		auto indices = std::vector<uint32_t> {};
+	//
+	//		for (auto i = 0; i < mesh->mNumFaces; ++i)
+	//		{
+	//			indices.insert(indices.end(), mesh->mFaces[i].mIndices, mesh->mFaces[i].mIndices + 3);
+	//		}
+	//
+	//		return indices;
+	//	};
+	//
+	//	m_meshes.clear();
+	//
+	//	struct Vertex
+	//	{
+	//		glm::vec3 position;
+	//		glm::vec2 texCoord;
+	//	};
+	//
+	//	const auto vertexAttribs = std::array {
+	//		gles3::VertexAttrib {
+	//			.size = 3, .type = GL_FLOAT, .normalized = GL_FALSE, .stride = sizeof(Vertex), .offset = 0},
+	//		gles3::VertexAttrib {
+	//			.size = 2, .type = GL_FLOAT, .normalized = GL_FALSE, .stride = sizeof(Vertex), .offset =
+	// sizeof(glm::vec3)},
+	//	};
+	//
+	//	for (auto i = 0; i < scene->mNumMeshes; ++i)
+	//	{
+	//		const auto mesh = scene->mMeshes[i];
+	//
+	//		if (mesh->mPrimitiveTypes != aiPrimitiveType_TRIANGLE)
+	//		{
+	//			Log::debug(fmt::format("Skip mesh '{}'.", mesh->mName.C_Str()));
+	//			continue;
+	//		}
+	//
+	//		auto vertices = std::vector<Vertex>(mesh->mNumVertices);
+	//
+	//		for (auto v = 0; v < mesh->mNumVertices; ++v)
+	//		{
+	//			auto &vertex = vertices.at(v);
+	//
+	//			vertex.position = glm::vec3(mesh->mVertices[v].x, mesh->mVertices[v].y, mesh->mVertices[v].z);
+	//
+	//			if (mesh->mTextureCoords[0])
+	//			{
+	//				vertex.texCoord = glm::vec2(mesh->mTextureCoords[0][v].x, mesh->mTextureCoords[0][v].y);
+	//			}
+	//		}
+	//
+	//		Log::debug(fmt::format("Loading mesh '{}'.", mesh->mName.C_Str()));
+	//
+	//		auto vbo = gles3::Buffer(GL_ARRAY_BUFFER, GL_STATIC_DRAW, vertices);
+	//		auto vao = gles3::VertexArray(vbo, vertexAttribs);
+	//
+	//		m_meshes.push_back(rendering::Mesh {
+	//			.vbo = std::make_shared<gles3::Buffer>(std::move(vbo)),
+	//			.ibo = std::make_shared<gles3::Buffer>(GL_ELEMENT_ARRAY_BUFFER, GL_STATIC_DRAW, extractIndices(mesh)),
+	//			.vao = std::make_shared<gles3::VertexArray>(std::move(vao)),
+	//			.mode = GL_TRIANGLES,
+	//			.count = static_cast<GLsizei>(mesh->mNumFaces * 3)});
+	//		m_renderList.emplace_back(i, mesh->mMaterialIndex);
+	//	}
 }
 
 void Game::initLogFile(const std::filesystem::path &path)
@@ -344,9 +352,7 @@ void Game::initLogFile(const std::filesystem::path &path)
 	});
 }
 
-void Game::gles3DebugCallback(
-	GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar *message,
-	const void *userParam)
+void Game::gles3DebugCallback(GLenum, GLenum, GLuint, GLenum, GLsizei, const GLchar *message, const void *)
 {
 	Log::debug(message);
 }

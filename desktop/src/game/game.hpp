@@ -35,6 +35,8 @@ private:
 
 	Config m_config;
 
+	std::unique_ptr<scene::Scene> m_scene;
+
 //	Camera m_camera;
 //	std::shared_ptr<gles3::Buffer> m_transformUBO;
 //	std::vector<rendering::Brush> m_brushes;

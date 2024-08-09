@@ -2,9 +2,9 @@
 
 precision highp float;
 
-in vec2 texCoord;
+// in vec2 texCoord;
 
-uniform sampler2D diffuse;
+// uniform sampler2D diffuse;
 
 layout(location = 0) out vec4 out_color;
 

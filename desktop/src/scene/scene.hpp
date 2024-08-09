@@ -6,9 +6,14 @@
 #include <assimp/scene.h>
 #include <glm/glm.hpp>
 
+#include "../gles3/buffer.hpp"
+#include "../gles3/shader_program.hpp"
+#include "../gles3/vertex_array.hpp"
+#include "bvh.hpp"
 #include "face.hpp"
 #include "material.hpp"
 #include "mesh.hpp"
+#include "camera.hpp"
 
 namespace dust::scene
 {
@@ -21,13 +26,17 @@ public:
 
 	Scene &operator=(const Scene &) = delete;
 
+	void drawStaticGeometry(float xrel, float yrel) const;
+
 private:
 	void loadMap(const std::string &mapName);
-	void loadMapGeometry(const std::filesystem::path &glbFile);
+	void loadMapGeometry(const std::filesystem::path &filePath);
 	void buildStaticBVH();
 	void importMaterial(const aiMaterial *material);
 
 	const std::filesystem::path m_assetsDir;
+
+	mutable game::Camera m_camera;
 
 	std::vector<scene::Material> m_materials;
 
@@ -38,6 +47,11 @@ private:
 	} m_staticGeometry;
 
 	std::vector<Mesh> m_meshes;
+	std::vector<std::vector<BVH>> m_staticBvh;
+	mutable gles3::Buffer m_staticVbo, m_staticUbo;
+	gles3::VertexArray m_staticVao;
+	gles3::ShaderProgram m_shaderProgram;
+	int64_t m_staticVerticesCount;
 };
 
 } // namespace dust::scene

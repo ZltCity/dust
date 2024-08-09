@@ -6,8 +6,8 @@ precision highp float;
 layout(triangles) in;
 layout(line_strip, max_vertices = 4) out;
 
-in vec2 vs_texCoord[];
-out vec2 texCoord;
+// in vec2 vs_texCoord[];
+// out vec2 texCoord;
 
 //in lowp vec3 vAmbDif[];
 //out lowp vec3 fragColor;
@@ -15,7 +15,7 @@ out vec2 texCoord;
 void pushVertex(int i)
 {
     gl_Position = gl_in[i].gl_Position;
-    texCoord = vs_texCoord[i];
+    // texCoord = vs_texCoord[i];
     EmitVertex();
 }
 

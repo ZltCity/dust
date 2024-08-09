@@ -22,6 +22,7 @@ add_executable(dust-desktop
 	src/scene/face.cpp
 	src/scene/material.cpp
 	src/scene/mesh.cpp
+	src/scene/plane.cpp
 	src/scene/scene.cpp
 	src/sdl/sdl.cpp
 	src/sdl/window.cpp
@@ -29,6 +30,9 @@ add_executable(dust-desktop
 	src/util/blob.cpp
 	src/util/stream.cpp)
 
+target_compile_options(dust-desktop PRIVATE
+	-Wall
+	-Wextra)
 set_target_properties(dust-desktop PROPERTIES
 	CXX_STANDARD 23
 	CXX_STANDARD_REQUIRED ON)
