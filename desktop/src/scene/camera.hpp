@@ -2,7 +2,7 @@
 
 #include <glm/glm.hpp>
 
-namespace dust::game
+namespace dust::scene
 {
 
 struct Axes

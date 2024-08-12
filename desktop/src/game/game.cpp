@@ -37,7 +37,7 @@ int Game::start()
 
 	[[maybe_unused]] auto &sdl = sdl::Lib::instance();
 	auto window = std::make_shared<sdl::Window>(
-		"Dust Game", std::make_tuple(2560, 1440), SDL_WINDOW_SHOWN | SDL_WINDOW_FULLSCREEN_DESKTOP);
+		"Dust Game", std::make_tuple(1920, 1080), SDL_WINDOW_SHOWN);
 	auto renderingContext = gles3::RenderingContext(window, m_config.gles3.debugContext);
 
 	renderingContext.makeCurrent();
@@ -51,17 +51,16 @@ int Game::start()
 
 	glEnable(GL_DEPTH_TEST);
 
-		SDL_SetRelativeMouseMode(SDL_TRUE);
+//	SDL_SetRelativeMouseMode(SDL_TRUE);
 
 	loadMap({});
 
-	// auto moveForward = false, moveBackward = false, moveLeft = false, moveRight = false;
+	auto &camera = m_scene->camera();
+	auto moveForward = false, moveBackward = false, moveLeft = false, moveRight = false;
 
 	while (not quit)
 	{
 		auto event = SDL_Event {};
-
-		auto xrel = 0.f, yrel = 0.f;
 
 		while (SDL_PollEvent(&event))
 		{
@@ -74,56 +73,54 @@ int Game::start()
 			{
 				case SDL_MOUSEMOTION:
 				{
-//					m_camera.yaw(static_cast<float>(event.motion.xrel) * -0.002f);
-//					m_camera.pitch(static_cast<float>(event.motion.yrel) * -0.002f);
-					xrel = static_cast<float>(event.motion.xrel) * -0.002f;
-					yrel = static_cast<float>(event.motion.yrel) * -0.002f;
+					camera.yaw(static_cast<float>(event.motion.xrel) * -0.002f);
+					camera.pitch(static_cast<float>(event.motion.yrel) * -0.002f);
 
 					break;
 				}
-//				case SDL_KEYDOWN:
-//				{
-//					switch (event.key.keysym.sym)
-//					{
-//						case SDLK_w: moveForward = true; break;
-//						case SDLK_s: moveBackward = true; break;
-//						case SDLK_a: moveLeft = true; break;
-//						case SDLK_d: moveRight = true; break;
-//					}
-//					break;
-//				}
-//				case SDL_KEYUP:
-//				{
-//					switch (event.key.keysym.sym)
-//					{
-//						case SDLK_w: moveForward = false; break;
-//						case SDLK_s: moveBackward = false; break;
-//						case SDLK_a: moveLeft = false; break;
-//						case SDLK_d: moveRight = false; break;
-//					}
-//					break;
-//				}
+				case SDL_KEYDOWN:
+				{
+					switch (event.key.keysym.sym)
+					{
+						case SDLK_w: moveForward = true; break;
+						case SDLK_s: moveBackward = true; break;
+						case SDLK_a: moveLeft = true; break;
+						case SDLK_d: moveRight = true; break;
+					}
+					break;
+				}
+				case SDL_KEYUP:
+				{
+					switch (event.key.keysym.sym)
+					{
+						case SDLK_w: moveForward = false; break;
+						case SDLK_s: moveBackward = false; break;
+						case SDLK_a: moveLeft = false; break;
+						case SDLK_d: moveRight = false; break;
+					}
+					break;
+				}
 			}
 		}
 
-		//		const auto [right, up, forward] = m_camera.axes();
-		//
-		//		if (moveForward)
-		//		{
-		//			m_camera.move(forward * 0.05f);
-		//		}
-		//		if (moveBackward)
-		//		{
-		//			m_camera.move(forward * -0.05f);
-		//		}
-		//		if (moveLeft)
-		//		{
-		//			m_camera.move(right * -0.05f);
-		//		}
-		//		if (moveRight)
-		//		{
-		//			m_camera.move(right * 0.05f);
-		//		}
+		const auto [right, up, forward] = camera.axes();
+
+		if (moveForward)
+		{
+			camera.move(forward * 0.05f);
+		}
+		if (moveBackward)
+		{
+			camera.move(forward * -0.05f);
+		}
+		if (moveLeft)
+		{
+			camera.move(right * -0.05f);
+		}
+		if (moveRight)
+		{
+			camera.move(right * 0.05f);
+		}
 
 		//		m_transformUBO->update(
 		//			0, Camera::perspective(glm::radians(95.f), 16.f / 9.f, 0.1f, 1000.f),
@@ -133,7 +130,7 @@ int Game::start()
 		glClearColor(0.f, 0.f, 0.f, 0.f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-		m_scene->drawStaticGeometry(xrel, yrel);
+		m_scene->drawStaticGeometry();
 
 		//		for (const auto [meshIndex, brushIndex] : m_renderList)
 		//		{
@@ -153,7 +150,7 @@ void Game::loadMap(const std::filesystem::path &path)
 {
 	Log::debug(fmt::format("Loading map '{}'.", path.generic_string()));
 
-//	auto map = scene::Scene("./assets", "graveyard");
+	//	auto map = scene::Scene("./assets", "graveyard");
 	m_scene = std::make_unique<scene::Scene>("./assets", "graveyard");
 
 	//	// Create an instance of the Importer class

@@ -7,8 +7,7 @@ namespace dust::scene
 
 struct Mesh
 {
-	int64_t offset, count; //	To the faces array.
-	int32_t material;
+	int32_t faceOffset, faceCount, positionOffset, texCoordsOffset, material;
 };
 
 } // namespace dust::scene

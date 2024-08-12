@@ -2,7 +2,7 @@
 
 #include "camera.hpp"
 
-namespace dust::game
+namespace dust::scene
 {
 
 Camera::Camera()
