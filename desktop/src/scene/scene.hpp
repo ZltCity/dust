@@ -6,9 +6,7 @@
 #include <assimp/scene.h>
 #include <glm/glm.hpp>
 
-#include "../gles3/buffer.hpp"
-#include "../gles3/shader_program.hpp"
-#include "../gles3/vertex_array.hpp"
+#include "batch.hpp"
 #include "bvh.hpp"
 #include "camera.hpp"
 #include "face.hpp"
@@ -35,7 +33,7 @@ public:
 	[[nodiscard]] const std::vector<glm::vec2> &texCoords() const;
 	[[nodiscard]] const std::vector<Face> &faces() const;
 
-	void drawStaticGeometry() const;
+	[[nodiscard]] std::vector<Batch> present() const;
 
 private:
 	void loadMap(const std::string &mapName);
@@ -63,12 +61,6 @@ private:
 
 	std::vector<Material> m_materials;
 	std::vector<Mesh> m_meshes;
-
-	//	std::vector<std::vector<BVH>> m_staticBvh;
-	//	mutable gles3::Buffer m_staticVbo, m_staticUbo;
-	//	gles3::VertexArray m_staticVao;
-	//	gles3::ShaderProgram m_shaderProgram;
-	//	int64_t m_staticVerticesCount;
 };
 
 } // namespace dust::scene

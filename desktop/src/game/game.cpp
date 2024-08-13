@@ -3,16 +3,13 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
 
-#include <assimp/Importer.hpp>	// C++ importer interface
-#include <assimp/postprocess.h> // Post processing flags
-#include <assimp/scene.h>		// Output data structure
-
 #include <glm/gtc/matrix_transform.hpp>
 
 #include <SDL_mouse.h>
 
 #include "../gles3/rendering_context.hpp"
 #include "../logging/log.hpp"
+#include "../scene/renderer.hpp"
 #include "../sdl/sdl.hpp"
 #include "../util/blob.hpp"
 #include "../util/stream.hpp"
@@ -36,8 +33,7 @@ int Game::start()
 	m_config = loadConfig(configPath);
 
 	[[maybe_unused]] auto &sdl = sdl::Lib::instance();
-	auto window = std::make_shared<sdl::Window>(
-		"Dust Game", std::make_tuple(1920, 1080), SDL_WINDOW_SHOWN);
+	auto window = std::make_shared<sdl::Window>("Dust Game", std::make_tuple(1280, 720), SDL_WINDOW_SHOWN);
 	auto renderingContext = gles3::RenderingContext(window, m_config.gles3.debugContext);
 
 	renderingContext.makeCurrent();
@@ -49,11 +45,11 @@ int Game::start()
 
 	auto quit = false;
 
-	glEnable(GL_DEPTH_TEST);
-
-//	SDL_SetRelativeMouseMode(SDL_TRUE);
+	//	SDL_SetRelativeMouseMode(SDL_TRUE);
 
 	loadMap({});
+
+	auto renderer = scene::Renderer(*m_scene);
 
 	auto &camera = m_scene->camera();
 	auto moveForward = false, moveBackward = false, moveLeft = false, moveRight = false;
@@ -122,21 +118,18 @@ int Game::start()
 			camera.move(right * 0.05f);
 		}
 
-		//		m_transformUBO->update(
-		//			0, Camera::perspective(glm::radians(95.f), 16.f / 9.f, 0.1f, 1000.f),
-		//			m_camera.view() // * glm::rotate(glm::mat4(1.f), glm::radians(270.f), glm::vec3(1.f, 0.f, 0.f)) *
-		//				* glm::scale(glm::mat4(1.f), glm::vec3(.1f)));
-
 		glClearColor(0.f, 0.f, 0.f, 0.f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-		m_scene->drawStaticGeometry();
+		renderer.projection(scene::Camera::perspective(glm::radians(95.f), 16.f / 9.f, 0.1f, 1000.f));
+		renderer.view(camera.view());
 
-		//		for (const auto [meshIndex, brushIndex] : m_renderList)
-		//		{
-		//			m_brushes.at(brushIndex).set();
-		//			m_meshes.at(meshIndex).draw();
-		//		}
+		for (const auto &batch : m_scene->present())
+		{
+			renderer.useMaterial(batch.material);
+			renderer.model(glm::scale(glm::mat4(1.f), glm::vec3(.1f)) * batch.transform);
+			renderer.drawBatch(batch.mesh, batch.faceOffset, batch.faceCount);
+		}
 
 		renderingContext.swapBuffers();
 	}
@@ -150,7 +143,6 @@ void Game::loadMap(const std::filesystem::path &path)
 {
 	Log::debug(fmt::format("Loading map '{}'.", path.generic_string()));
 
-	//	auto map = scene::Scene("./assets", "graveyard");
 	m_scene = std::make_unique<scene::Scene>("./assets", "graveyard");
 
 	//	// Create an instance of the Importer class

@@ -55,17 +55,20 @@ const std::vector<Face> &Scene::faces() const
 	return m_geometryCache.faces;
 }
 
-void Scene::drawStaticGeometry() const
+std::vector<Batch> Scene::present() const
 {
-	//	m_shaderProgram.use();
-	//	m_staticUbo.update(
-	//		0, Camera::perspective(glm::radians(95.f), 16.f / 9.f, 0.1f, 1000.f),
-	//		m_camera.view() // * glm::rotate(glm::mat4(1.f), glm::radians(270.f), glm::vec3(1.f, 0.f, 0.f)) *
-	//			* glm::scale(glm::mat4(1.f), glm::vec3(0.05f)));
-	//	gles3::Binding(m_staticUbo, m_shaderProgram.uniformBlockIndex("Transform")).bindBase();
-	//	auto vaoBind = gles3::BindGuard(m_staticVao);
-	//
-	//	glDrawArrays(GL_LINES, 0, m_staticVerticesCount);
+	auto batches = std::vector<Batch> {};
+
+	std::ranges::transform(m_meshes, std::back_inserter(batches), [meshIndex = int32_t {}](const auto &mesh) mutable {
+		return Batch {
+			.transform = glm::mat4(1.f),
+			.material = mesh.material,
+			.mesh = meshIndex++,
+			.faceOffset = mesh.faceOffset,
+			.faceCount = mesh.faceCount};
+	});
+
+	return batches;
 }
 
 void Scene::loadMap(const std::string &mapName)

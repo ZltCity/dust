@@ -15,8 +15,8 @@ public:
 	Buffer();
 	explicit Buffer(GLenum target);
 	Buffer(GLenum target, GLenum usage, GLsizeiptr size);
-	template<class TCollection>
-	Buffer(GLenum target, GLenum usage, const TCollection &data_);
+	template<class T>
+	Buffer(GLenum target, GLenum usage, std::span<const T> data_);
 	Buffer(const Buffer &) = delete;
 	Buffer(Buffer &&other) noexcept;
 	~Buffer() noexcept;
@@ -29,10 +29,10 @@ public:
 	[[nodiscard]] GLenum target() const;
 	[[nodiscard]] GLuint handle() const;
 
-	template<class TCollection>
-	void data(GLenum usage, const TCollection &data_);
-	template<class TCollection>
-	void subData(size_t offset, const TCollection &data_);
+	template<class T>
+	void data(GLenum usage, std::span<const T> data_);
+	template<class T>
+	void subData(size_t offset, std::span<const T> data_);
 
 	template<class... TArgs>
 	void push(GLenum value, TArgs &&...args);
@@ -69,30 +69,27 @@ struct Binding<Buffer>
 	GLuint bindingPoint = {};
 };
 
-template<class TCollection>
-Buffer::Buffer(GLenum target, GLenum usage, const TCollection &data_) : m_target(target), m_handle(create())
+template<class T>
+Buffer::Buffer(GLenum target, GLenum usage, std::span<const T> data_) : m_target(target), m_handle(create())
 {
 	data(usage, data_);
 }
 
-template<class TCollection>
-void Buffer::data(GLenum usage, const TCollection &data_)
+template<class T>
+void Buffer::data(GLenum usage, std::span<const T> data_)
 {
 	auto bind = BindGuard(*this);
 
-	glBufferData(
-		m_target, static_cast<GLsizeiptr>(sizeof(typename TCollection::value_type) * data_.size()), data_.data(),
-		usage);
+	glBufferData(m_target, static_cast<GLsizeiptr>(sizeof(T) * data_.size()), data_.data(), usage);
 }
 
-template<class TCollection>
-void Buffer::subData(size_t offset, const TCollection &data_)
+template<class T>
+void Buffer::subData(size_t offset, std::span<const T> data_)
 {
 	auto bind = BindGuard(*this);
 
 	glBufferSubData(
-		m_target, static_cast<GLintptr>(offset),
-		static_cast<GLsizeiptr>(sizeof(typename TCollection::value_type) * data_.size()), data_.data());
+		m_target, static_cast<GLintptr>(offset), static_cast<GLsizeiptr>(sizeof(T) * data_.size()), data_.data());
 }
 
 template<class... TArgs>
