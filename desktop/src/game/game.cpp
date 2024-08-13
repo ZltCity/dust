@@ -33,7 +33,7 @@ int Game::start()
 	m_config = loadConfig(configPath);
 
 	[[maybe_unused]] auto &sdl = sdl::Lib::instance();
-	auto window = std::make_shared<sdl::Window>("Dust Game", std::make_tuple(1280, 720), SDL_WINDOW_SHOWN);
+	auto window = std::make_shared<sdl::Window>("Dust Game", std::make_tuple(1920, 1080), SDL_WINDOW_SHOWN);
 	auto renderingContext = gles3::RenderingContext(window, m_config.gles3.debugContext);
 
 	renderingContext.makeCurrent();
@@ -44,8 +44,7 @@ int Game::start()
 	}
 
 	auto quit = false;
-
-	//	SDL_SetRelativeMouseMode(SDL_TRUE);
+	auto relativeMouse = false;
 
 	loadMap({});
 
@@ -87,12 +86,17 @@ int Game::start()
 				}
 				case SDL_KEYUP:
 				{
-					switch (event.key.keysym.sym)
+					switch (event.key.keysym.scancode)
 					{
-						case SDLK_w: moveForward = false; break;
-						case SDLK_s: moveBackward = false; break;
-						case SDLK_a: moveLeft = false; break;
-						case SDLK_d: moveRight = false; break;
+						case SDL_SCANCODE_W: moveForward = false; break;
+						case SDL_SCANCODE_S: moveBackward = false; break;
+						case SDL_SCANCODE_A: moveLeft = false; break;
+						case SDL_SCANCODE_D: moveRight = false; break;
+						case SDL_SCANCODE_SPACE:
+						{
+							relativeMouse = !relativeMouse;
+							SDL_SetRelativeMouseMode(relativeMouse ? SDL_TRUE : SDL_FALSE);
+						}
 					}
 					break;
 				}
@@ -103,33 +107,28 @@ int Game::start()
 
 		if (moveForward)
 		{
-			camera.move(forward * 0.05f);
+			camera.move(forward * 1.5f);
 		}
 		if (moveBackward)
 		{
-			camera.move(forward * -0.05f);
+			camera.move(forward * -1.5f);
 		}
 		if (moveLeft)
 		{
-			camera.move(right * -0.05f);
+			camera.move(right * -1.5f);
 		}
 		if (moveRight)
 		{
-			camera.move(right * 0.05f);
+			camera.move(right * 1.5f);
 		}
+
+		glEnable(GL_DEPTH_TEST);
 
 		glClearColor(0.f, 0.f, 0.f, 0.f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-		renderer.projection(scene::Camera::perspective(glm::radians(95.f), 16.f / 9.f, 0.1f, 1000.f));
-		renderer.view(camera.view());
-
-		for (const auto &batch : m_scene->present())
-		{
-			renderer.useMaterial(batch.material);
-			renderer.model(glm::scale(glm::mat4(1.f), glm::vec3(.1f)) * batch.transform);
-			renderer.drawBatch(batch.mesh, batch.faceOffset, batch.faceCount);
-		}
+		renderer.view(scene::Camera::perspective(glm::radians(95.f), 16.f / 9.f, 0.1f, 10000.f), camera.view());
+		renderer.draw(m_scene->present());
 
 		renderingContext.swapBuffers();
 	}

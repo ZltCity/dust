@@ -17,20 +17,33 @@ public:
 
 	Renderer &operator=(const Renderer &) = delete;
 
-	void useMaterial(int32_t index) const;
-	void drawBatch(int32_t meshIndex, int32_t faceOffset, int32_t faceCount) const;
-	void projection(const glm::mat4 &m);
-	void view(const glm::mat4 &m);
-	void model(const glm::mat4 &m);
+	void draw(std::span<const RenderList> lists) const;
+	void view(const glm::mat4 &projection, const glm::mat4 &view);
 
 private:
+	struct InstanceInfo
+	{
+		glm::mat4 transform;
+		int32_t positionOffset, texCoordOffset, normalOffset;
+	};
+
+	static constexpr auto POSITION_BUFFER_BINDING = 0;
+	static constexpr auto TEXCOORD_BUFFER_BINDING = 1;
+	static constexpr auto NORMAL_BUFFER_BINDING = 2;
+	static constexpr auto INSTANCE_BUFFER_BINDING = 6;
+
+	void initMaterials(std::span<const Material> materials);
+
 	[[nodiscard]] static std::vector<gles3::Shader> compileShaders(
 		const std::vector<std::pair<GLenum, std::filesystem::path>> &shaderPath);
 	[[nodiscard]] static gles3::ShaderProgram loadShaderProgram(const std::vector<gles3::Shader> &shaders);
 
-	std::vector<Mesh> m_meshes;
-	gles3::Buffer m_positionsBuffer, m_texCoordsBuffer, m_facesBuffer, m_transformUbo;
-	gles3::ShaderProgram m_basicShaderProgram;
+	gles3::Buffer m_positionsBuffer, m_texCoordBuffer, m_normalBuffer, m_facesBuffer;
+	gles3::Buffer m_viewUbo;
+	mutable gles3::Buffer m_instanceBuffer;
+	mutable int64_t m_instanceBufferSize;
+	mutable std::vector<InstanceInfo> m_instanceCache;
+	std::vector<std::shared_ptr<gles3::ShaderProgram>> m_shaderPrograms;
 };
 
 } // namespace dust::scene

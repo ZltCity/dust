@@ -7,49 +7,82 @@ namespace dust::scene
 {
 
 Renderer::Renderer(const Scene &scene)
-	: m_meshes(scene.meshes()),
-	  m_positionsBuffer(GL_SHADER_STORAGE_BUFFER, GL_STATIC_DRAW, std::span(scene.positions())),
-	  m_texCoordsBuffer(GL_SHADER_STORAGE_BUFFER, GL_STATIC_DRAW, std::span(scene.texCoords())),
+	: m_positionsBuffer(GL_SHADER_STORAGE_BUFFER, GL_STATIC_DRAW, std::span(scene.positions())),
+	  m_texCoordBuffer(GL_SHADER_STORAGE_BUFFER, GL_STATIC_DRAW, std::span(scene.texCoords())),
+	  m_normalBuffer(GL_SHADER_STORAGE_BUFFER, GL_STATIC_DRAW, std::span(scene.normals())),
 	  m_facesBuffer(GL_ELEMENT_ARRAY_BUFFER, GL_STATIC_DRAW, std::span(scene.faces())),
-	  m_transformUbo(GL_UNIFORM_BUFFER, GL_DYNAMIC_DRAW, sizeof(glm::mat4) * 3),
-	  m_basicShaderProgram(loadShaderProgram(compileShaders({
-		  std::make_pair(GL_VERTEX_SHADER, "./assets/shaders/basic.vs"),
-		  std::make_pair(GL_FRAGMENT_SHADER, "./assets/shaders/basic.fs"),
-		  std::make_pair(GL_GEOMETRY_SHADER, "./assets/shaders/wireframe.gs"),
-	  })))
-{}
-
-void Renderer::useMaterial(int32_t index) const
+	  m_viewUbo(GL_UNIFORM_BUFFER, GL_DYNAMIC_DRAW, sizeof(glm::mat4) * 2),
+	  m_instanceBufferSize {}
 {
-	m_basicShaderProgram.use();
-
-	gles3::Binding(m_transformUbo, m_basicShaderProgram.uniformBlockIndex("Transform")).bindBase();
+	initMaterials(scene.materials());
 }
 
-void Renderer::drawBatch(int32_t meshIndex, int32_t faceOffset, int32_t faceCount) const
+void Renderer::draw(std::span<const RenderList> lists) const
 {
 	auto facesBinding = gles3::BindGuard(m_facesBuffer);
 
-	gles3::Binding(m_positionsBuffer, 0).bindBase();
-	gles3::Binding(m_texCoordsBuffer, 1).bindBase();
+	gles3::Binding(m_positionsBuffer, POSITION_BUFFER_BINDING).bindBase();
+	gles3::Binding(m_texCoordBuffer, TEXCOORD_BUFFER_BINDING).bindBase();
+	gles3::Binding(m_normalBuffer, NORMAL_BUFFER_BINDING).bindBase();
 
-	glDrawElements(
-		GL_TRIANGLES, faceCount * 3, GL_UNSIGNED_INT, reinterpret_cast<void *>(faceOffset * 3 * sizeof(Face)));
+	for (const auto &ls : lists)
+	{
+		const auto &shaderProgram = m_shaderPrograms.at(ls.material);
+
+		shaderProgram->use();
+
+		gles3::Binding(m_viewUbo, shaderProgram->uniformBlockIndex("View")).bindBase();
+
+		m_instanceCache.clear();
+
+		for (const auto &batch : ls.batches)
+		{
+			m_instanceCache.emplace_back(
+				batch.transform, batch.positionOffset, batch.texCoordOffset, batch.normalOffset);
+		}
+
+		if (m_instanceBufferSize < static_cast<int32_t>(m_instanceCache.size()))
+		{
+			m_instanceBuffer = gles3::Buffer(
+				GL_SHADER_STORAGE_BUFFER, GL_DYNAMIC_DRAW, std::span<const InstanceInfo>(m_instanceCache));
+			m_instanceBufferSize = static_cast<int32_t>(m_instanceCache.size());
+		}
+		else
+		{
+			m_instanceBuffer.subData(0, std::span<const InstanceInfo>(m_instanceCache));
+		}
+
+		gles3::Binding(m_instanceBuffer, INSTANCE_BUFFER_BINDING).bindBase();
+
+		auto drawID = int32_t {};
+
+		for (const auto &batch : ls.batches)
+		{
+			shaderProgram->uniform("drawID", drawID++);
+			glDrawElements(
+				GL_TRIANGLES, batch.faceCount * 3, GL_UNSIGNED_INT,
+				reinterpret_cast<void *>(batch.faceOffset * sizeof(Face)));
+		}
+	}
 }
 
-void Renderer::projection(const glm::mat4 &m)
+void Renderer::view(const glm::mat4 &projection, const glm::mat4 &view)
 {
-	m_transformUbo.update(0, m);
+	m_viewUbo.update(0, projection, view);
 }
 
-void Renderer::view(const glm::mat4 &m)
+void Renderer::initMaterials(std::span<const Material> materials)
 {
-	m_transformUbo.update(sizeof(glm::mat4), m);
-}
+	auto basicProgram = std::make_shared<gles3::ShaderProgram>(loadShaderProgram(compileShaders({
+		std::make_pair(GL_VERTEX_SHADER, "./assets/shaders/basic.vs"),
+		std::make_pair(GL_FRAGMENT_SHADER, "./assets/shaders/basic.fs"),
+		//		std::make_pair(GL_GEOMETRY_SHADER, "./assets/shaders/wireframe.gs"),
+	})));
 
-void Renderer::model(const glm::mat4 &m)
-{
-	m_transformUbo.update(sizeof(glm::mat4) * 2, m);
+	for (const auto &m : materials)
+	{
+		m_shaderPrograms.push_back(basicProgram);
+	}
 }
 
 std::vector<gles3::Shader> Renderer::compileShaders(

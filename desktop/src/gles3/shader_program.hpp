@@ -22,6 +22,7 @@ public:
 	[[nodiscard]] GLuint handle() const;
 	[[nodiscard]] std::string log() const;
 	[[nodiscard]] GLuint uniformBlockIndex(const std::string &name) const;
+	void uniform(const std::string &name, int32_t v);
 
 	void attach(const Shader &shader);
 	[[nodiscard]] bool link();

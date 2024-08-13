@@ -6,12 +6,12 @@
 #include <assimp/scene.h>
 #include <glm/glm.hpp>
 
-#include "batch.hpp"
 #include "bvh.hpp"
 #include "camera.hpp"
 #include "face.hpp"
 #include "material.hpp"
 #include "mesh.hpp"
+#include "render_list.hpp"
 
 namespace dust::scene
 {
@@ -31,9 +31,10 @@ public:
 	[[nodiscard]] const std::vector<Mesh> &meshes() const;
 	[[nodiscard]] const std::vector<glm::vec3> &positions() const;
 	[[nodiscard]] const std::vector<glm::vec2> &texCoords() const;
+	[[nodiscard]] const std::vector<glm::vec3> &normals() const;
 	[[nodiscard]] const std::vector<Face> &faces() const;
 
-	[[nodiscard]] std::vector<Batch> present() const;
+	[[nodiscard]] std::vector<RenderList> present() const;
 
 private:
 	void loadMap(const std::string &mapName);
@@ -46,6 +47,7 @@ private:
 	[[nodiscard]] int32_t baseMeshOffset() const;
 	[[nodiscard]] int32_t basePositionOffset() const;
 	[[nodiscard]] int32_t baseTexCoordOffset() const;
+	[[nodiscard]] int32_t baseNormalOffset() const;
 	[[nodiscard]] int32_t baseFaceOffset() const;
 
 	const std::filesystem::path m_assetsDir;
@@ -56,6 +58,7 @@ private:
 	{
 		std::vector<glm::vec3> positions;
 		std::vector<glm::vec2> texCoords;
+		std::vector<glm::vec3> normals;
 		std::vector<Face> faces;
 	} m_geometryCache;
 

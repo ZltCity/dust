@@ -17,13 +17,13 @@ add_executable(dust-desktop
 	src/imgui/imgui.cpp
 	src/logging/log.cpp
 	src/scene/aabb.cpp
-	src/scene/batch.cpp
 	src/scene/bvh.cpp
 	src/scene/camera.cpp
 	src/scene/face.cpp
 	src/scene/material.cpp
 	src/scene/mesh.cpp
 	src/scene/plane.cpp
+	src/scene/render_list.cpp
 	src/scene/renderer.cpp
 	src/scene/scene.cpp
 	src/sdl/sdl.cpp

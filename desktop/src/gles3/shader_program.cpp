@@ -60,6 +60,11 @@ GLuint ShaderProgram::uniformBlockIndex(const std::string &name) const
 	return glGetUniformBlockIndex(m_handle, name.c_str());
 }
 
+void ShaderProgram::uniform(const std::string &name, int32_t v)
+{
+	glUniform1i(glGetUniformLocation(m_handle, name.c_str()), static_cast<GLint>(v));
+}
+
 void ShaderProgram::attach(const Shader &shader)
 {
 	glAttachShader(m_handle, shader.handle());

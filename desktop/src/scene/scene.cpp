@@ -50,25 +50,38 @@ const std::vector<glm::vec2> &Scene::texCoords() const
 	return m_geometryCache.texCoords;
 }
 
+const std::vector<glm::vec3> &Scene::normals() const
+{
+	return m_geometryCache.normals;
+}
+
 const std::vector<Face> &Scene::faces() const
 {
 	return m_geometryCache.faces;
 }
 
-std::vector<Batch> Scene::present() const
+std::vector<RenderList> Scene::present() const
 {
-	auto batches = std::vector<Batch> {};
+	auto lists = std::vector<RenderList> {};
 
-	std::ranges::transform(m_meshes, std::back_inserter(batches), [meshIndex = int32_t {}](const auto &mesh) mutable {
-		return Batch {
-			.transform = glm::mat4(1.f),
+	std::ranges::transform(m_meshes, std::back_inserter(lists), [](const auto &mesh) {
+		return RenderList {
 			.material = mesh.material,
-			.mesh = meshIndex++,
-			.faceOffset = mesh.faceOffset,
-			.faceCount = mesh.faceCount};
+			.batches =
+				{
+					RenderList::Batch {
+						.transform = glm::mat4(1.f),
+						.faceOffset = mesh.faceOffset,
+						.faceCount = mesh.faceCount,
+						.positionOffset = mesh.positionOffset,
+						.texCoordOffset = mesh.texCoordOffset,
+						.normalOffset = mesh.normalOffset,
+					},
+				},
+		};
 	});
 
-	return batches;
+	return lists;
 }
 
 void Scene::loadMap(const std::string &mapName)
@@ -143,7 +156,8 @@ void Scene::importMesh(const aiMesh *mesh, int32_t materialOffset)
 		.faceOffset = baseFaceOffset(),
 		.faceCount = static_cast<int32_t>(mesh->mNumFaces),
 		.positionOffset = basePositionOffset(),
-		.texCoordsOffset = baseTexCoordOffset(),
+		.texCoordOffset = baseTexCoordOffset(),
+		.normalOffset = baseNormalOffset(),
 		.material = static_cast<int32_t>(mesh->mMaterialIndex) + materialOffset,
 	};
 
@@ -157,6 +171,13 @@ void Scene::importMesh(const aiMesh *mesh, int32_t materialOffset)
 		std::ranges::transform(
 			std::span(mesh->mTextureCoords[0], mesh->mNumVertices), std::back_inserter(m_geometryCache.texCoords),
 			[](const aiVector3D &v) { return glm::vec2(v.x, v.y); });
+	}
+	//	Import normals.
+	if (mesh->mNormals)
+	{
+		std::ranges::transform(
+			std::span(mesh->mNormals, mesh->mNumVertices), std::back_inserter(m_geometryCache.normals),
+			[](const aiVector3D &v) { return glm::vec3(v.x, v.y, v.z); });
 	}
 	//	Import faces.
 	std::ranges::transform(
@@ -274,6 +295,11 @@ int32_t Scene::basePositionOffset() const
 int32_t Scene::baseTexCoordOffset() const
 {
 	return static_cast<int32_t>(m_geometryCache.texCoords.size());
+}
+
+int32_t Scene::baseNormalOffset() const
+{
+	return static_cast<int32_t>(m_geometryCache.normals.size());
 }
 
 int32_t Scene::baseFaceOffset() const
