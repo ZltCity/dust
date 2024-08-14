@@ -1,5 +1,10 @@
 {
   "gles3": {
     "debugContext": true
+  },
+  "window": {
+    "fullscreen": false,
+    "height": 720,
+    "width": 1280
   }
 }

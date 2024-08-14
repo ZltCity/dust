@@ -33,7 +33,9 @@ int Game::start()
 	m_config = loadConfig(configPath);
 
 	[[maybe_unused]] auto &sdl = sdl::Lib::instance();
-	auto window = std::make_shared<sdl::Window>("Dust Game", std::make_tuple(1920, 1080), SDL_WINDOW_SHOWN);
+	auto window = std::make_shared<sdl::Window>(
+		"Dust Game", std::make_tuple(m_config.window.width, m_config.window.height),
+		SDL_WINDOW_SHOWN | (m_config.window.fullscreen ? SDL_WINDOW_FULLSCREEN : 0));
 	auto renderingContext = gles3::RenderingContext(window, m_config.gles3.debugContext);
 
 	renderingContext.makeCurrent();

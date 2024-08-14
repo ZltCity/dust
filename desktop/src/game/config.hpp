@@ -16,7 +16,15 @@ struct Config
 		NLOHMANN_DEFINE_TYPE_INTRUSIVE_WITH_DEFAULT(GLES3, debugContext)
 	} gles3;
 
-	NLOHMANN_DEFINE_TYPE_INTRUSIVE_WITH_DEFAULT(Config, gles3)
+	struct Window
+	{
+		int32_t width = 1280, height = 720;
+		bool fullscreen = false;
+
+		NLOHMANN_DEFINE_TYPE_INTRUSIVE_WITH_DEFAULT(Window, width, height, fullscreen)
+	} window;
+
+	NLOHMANN_DEFINE_TYPE_INTRUSIVE_WITH_DEFAULT(Config, gles3, window)
 };
 
 [[nodiscard]] Config loadConfig(const std::filesystem::path &path);
