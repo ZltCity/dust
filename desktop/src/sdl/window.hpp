@@ -23,6 +23,8 @@ public:
 
 	[[nodiscard]] SDL_Window *handle() const;
 
+	[[nodiscard]] std::tuple<int32_t, int32_t> size() const;
+
 	void swap(Window &other) noexcept;
 	void reset() noexcept;
 

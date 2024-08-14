@@ -39,6 +39,15 @@ SDL_Window *Window::handle() const
 	return m_window;
 }
 
+std::tuple<int32_t, int32_t> Window::size() const
+{
+	auto width = int {}, height = int {};
+
+	SDL_GetWindowSize(m_window, &width, &height);
+
+	return {width, height};
+}
+
 void Window::swap(Window &other) noexcept
 {
 	std::swap(m_window, other.m_window);

@@ -1,4 +1,13 @@
 {
+  "camera": {
+    "flyMode": {
+      "enabled": true,
+      "velocity": 1.0
+    },
+    "inverseX": false,
+    "inverseY": false,
+    "sensitivity": 1.0
+  },
   "gles3": {
     "debugContext": true
   },

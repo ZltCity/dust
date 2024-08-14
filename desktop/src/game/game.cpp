@@ -70,8 +70,13 @@ int Game::start()
 			{
 				case SDL_MOUSEMOTION:
 				{
-					camera.yaw(static_cast<float>(event.motion.xrel) * -0.002f);
-					camera.pitch(static_cast<float>(event.motion.yrel) * -0.002f);
+					const auto yawAngle = static_cast<float>(event.motion.xrel) * m_config.camera.sensitivity *
+										  (m_config.camera.inverseX ? 1.f : -1.f);
+					const auto pitchAngle = static_cast<float>(event.motion.yrel) * m_config.camera.sensitivity *
+											(m_config.camera.inverseY ? 1.f : -1.f);
+
+					camera.yaw(yawAngle);
+					camera.pitch(pitchAngle);
 
 					break;
 				}
@@ -99,6 +104,7 @@ int Game::start()
 							relativeMouse = !relativeMouse;
 							SDL_SetRelativeMouseMode(relativeMouse ? SDL_TRUE : SDL_FALSE);
 						}
+						default: break;
 					}
 					break;
 				}
@@ -107,29 +113,35 @@ int Game::start()
 
 		const auto [right, up, forward] = camera.axes();
 
-		if (moveForward)
+		if (moveForward and m_config.camera.flyMode.enabled)
 		{
-			camera.move(forward * 1.5f);
+			camera.move(forward * m_config.camera.flyMode.velocity);
 		}
 		if (moveBackward)
 		{
-			camera.move(forward * -1.5f);
+			camera.move(forward * m_config.camera.flyMode.velocity * -1.f);
 		}
 		if (moveLeft)
 		{
-			camera.move(right * -1.5f);
+			camera.move(right * m_config.camera.flyMode.velocity * -1.f);
 		}
 		if (moveRight)
 		{
-			camera.move(right * 1.5f);
+			camera.move(right * m_config.camera.flyMode.velocity);
 		}
+
+		const auto [wndWidth, wndHeight] = window->size();
 
 		glEnable(GL_DEPTH_TEST);
 
 		glClearColor(0.f, 0.f, 0.f, 0.f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-		renderer.view(scene::Camera::perspective(glm::radians(95.f), 16.f / 9.f, 0.1f, 10000.f), camera.view());
+		renderer.view(
+			scene::Camera::perspective(
+				glm::radians(m_config.camera.fov), static_cast<float>(wndWidth) / static_cast<float>(wndHeight), 0.1f,
+				10000.f),
+			camera.view());
 		renderer.draw(m_scene->present());
 
 		renderingContext.swapBuffers();
