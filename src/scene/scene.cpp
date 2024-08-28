@@ -6,7 +6,6 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <nlohmann/json.hpp>
 
-#include "../gles3/bind_guard.hpp"
 #include "../util/blob.hpp"
 #include "../util/stream.hpp"
 #include "scene.hpp"

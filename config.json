@@ -8,8 +8,8 @@
     "inverseY": false,
     "sensitivity": 1.0
   },
-  "gles3": {
-    "debugContext": true
+  "renderer": {
+    "debug": true
   },
   "window": {
     "fullscreen": false,

@@ -9,13 +9,6 @@ namespace dust::game
 
 struct Config
 {
-	struct GLES3
-	{
-		bool debugContext = false;
-
-		NLOHMANN_DEFINE_TYPE_INTRUSIVE_WITH_DEFAULT(GLES3, debugContext)
-	} gles3;
-
 	struct Window
 	{
 		int32_t width = 1280, height = 720;
@@ -23,6 +16,13 @@ struct Config
 
 		NLOHMANN_DEFINE_TYPE_INTRUSIVE_WITH_DEFAULT(Window, width, height, fullscreen)
 	} window;
+
+	struct Renderer
+	{
+		bool debug = false;
+
+		NLOHMANN_DEFINE_TYPE_INTRUSIVE_WITH_DEFAULT(Renderer, debug)
+	} renderer;
 
 	struct Camera
 	{
@@ -40,7 +40,7 @@ struct Config
 		NLOHMANN_DEFINE_TYPE_INTRUSIVE_WITH_DEFAULT(Camera, flyMode, sensitivity, inverseX, inverseY)
 	} camera;
 
-	NLOHMANN_DEFINE_TYPE_INTRUSIVE_WITH_DEFAULT(Config, gles3, window, camera)
+	NLOHMANN_DEFINE_TYPE_INTRUSIVE_WITH_DEFAULT(Config, window, renderer, camera)
 };
 
 [[nodiscard]] Config loadConfig(const std::filesystem::path &path);

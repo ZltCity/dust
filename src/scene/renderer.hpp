@@ -2,8 +2,6 @@
 
 #include <vector>
 
-#include "../gles3/buffer.hpp"
-#include "../gles3/shader_program.hpp"
 #include "../scene/scene.hpp"
 
 namespace dust::scene
@@ -34,16 +32,16 @@ private:
 
 	void initMaterials(std::span<const Material> materials);
 
-	[[nodiscard]] static std::vector<gles3::Shader> compileShaders(
-		const std::vector<std::pair<GLenum, std::filesystem::path>> &shaderPath);
-	[[nodiscard]] static gles3::ShaderProgram loadShaderProgram(const std::vector<gles3::Shader> &shaders);
-
-	gles3::Buffer m_positionsBuffer, m_texCoordBuffer, m_normalBuffer, m_facesBuffer;
-	gles3::Buffer m_viewUbo;
-	mutable gles3::Buffer m_instanceBuffer;
+//	[[nodiscard]] static std::vector<gles3::Shader> compileShaders(
+//		const std::vector<std::pair<GLenum, std::filesystem::path>> &shaderPath);
+//	[[nodiscard]] static gles3::ShaderProgram loadShaderProgram(const std::vector<gles3::Shader> &shaders);
+//
+//	gles3::Buffer m_positionsBuffer, m_texCoordBuffer, m_normalBuffer, m_facesBuffer;
+//	gles3::Buffer m_viewUbo;
+//	mutable gles3::Buffer m_instanceBuffer;
 	mutable int64_t m_instanceBufferSize;
 	mutable std::vector<InstanceInfo> m_instanceCache;
-	std::vector<std::shared_ptr<gles3::ShaderProgram>> m_shaderPrograms;
+//	std::vector<std::shared_ptr<gles3::ShaderProgram>> m_shaderPrograms;
 };
 
 } // namespace dust::scene
